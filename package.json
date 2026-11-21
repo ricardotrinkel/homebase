@@ -1,0 +1,12 @@
+{
+  "name": "homebase",
+  "private": true,
+  "type": "module",
+  "description": "Homebase: a agenda da família",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test tests/*.test.js" },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.2",
+    "web-push": "3.6.7"
+  }
+}

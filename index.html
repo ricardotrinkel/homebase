@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Homebase</title>
+<meta name="description" content="A agenda da família">
+<meta name="theme-color" content="#252D45">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Homebase">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Great+Vibes&family=Playfair+Display:ital,wght@1,500;1,700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="boot"><div><div class="logo"><img src="/icons/icon-192.png" width="88" height="88" alt=""></div><b>Homebase</b><p id="bootMsg"></p></div></div>
+<div id="login" hidden></div>
+<div id="app" hidden></div>
+<div id="icons" hidden></div>
+<div id="modal"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="/vendor/supabase.js"></script>
+<script src="/backend.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
