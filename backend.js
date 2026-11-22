@@ -213,6 +213,8 @@ window.HB = (() => {
     return { ok: true };
   }
   async function signOut() {
+    // termina de enviar o que ainda está pendente antes de sair da conta
+    try { push(); await queue; } catch (e) {}
     try { await disablePush(); } catch (e) {}
     try { if (channel) sb.removeChannel(channel); channel = null; await sb.auth.signOut(); } catch (e) {}
     try { localStorage.removeItem(CACHE_LS); } catch (e) {}
