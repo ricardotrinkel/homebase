@@ -90,7 +90,14 @@ window.HB = (() => {
         before.forEach((_, id) => { if (!now.has(id)) del.push(id); });
         if (!up.length && !del.length) continue;
         try {
-          if (up.length) { const { error } = await sb.from(n).upsert(up); if (error) throw error; }
+          if (up.length) {
+            let { error } = await sb.from(n).upsert(up);
+            // banco ainda sem a coluna "until" (SQL novo não rodado): salva sem ela
+            if (error && n === 'events' && /until/i.test(error.message || '')) {
+              ({ error } = await sb.from(n).upsert(up.map(({ until, ...r }) => r)));
+            }
+            if (error) throw error;
+          }
           if (del.length) { const { error } = await sb.from(n).delete().in('id', del); if (error) throw error; }
           synced[n] = now;
         } catch (e) {
