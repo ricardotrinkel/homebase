@@ -2,8 +2,6 @@
 -- Homebase: estrutura do banco de dados (Supabase) — versão com várias famílias
 -- Como usar: no Supabase, abra "SQL Editor", cole este arquivo inteiro
 -- e clique em "Run". Pode rodar de novo sem problema.
--- Se o banco ainda estiver na versão antiga (uma família só), os dados
--- são passados automaticamente para a família "Trinkel".
 -- =====================================================================
 begin;
 
@@ -51,27 +49,6 @@ language sql stable security definer set search_path = public as $$
   select coalesce((select f.owner_member = m.id from public.members m join public.families f on f.id = m.family_id
                    where m.user_id = auth.uid()), false)
 $$;
-
--- ---------- Passa a versão antiga (uma família só) para a família Trinkel ----------
-do $$
-declare fid uuid; icon int := 1;
-begin
-  if to_regclass('public.profiles') is not null and not exists (select 1 from public.families) then
-    if to_regclass('public.settings') is not null then
-      execute $q$ select coalesce((select (value #>> '{}')::int from public.settings where key = 'app_icon'), 1) $q$ into icon;
-    end if;
-    insert into public.families (name, code, owner_member, app_icon) values ('Trinkel', 'TRINKEL-LRWD', 'ricardo', icon) returning id into fid;
-    insert into public.members (id, family_id, user_id, name, role, color, shape, is_admin, created_at)
-    select v.id, fid, p.user_id, v.name, v.role, v.color, v.shape, v.adm, now() + v.n * interval '1 second'
-    from (values ('liliane','Liliane','Mãe','#FBB28B','flower',true,1),
-                 ('ricardo','Ricardo','Pai','#6B515E','square',false,2),
-                 ('isa','Isa','Filha','#F7E289','circle',true,3),
-                 ('marina','Marina','Filha','#A9AE97','tri',false,4),
-                 ('gabi','Gabi','Filha','#DBC0E8','cloud',false,5),
-                 ('frieda','Frieda','Filha','#EA5E86','penta',false,6)) as v(id,name,role,color,shape,adm,n)
-    left join public.profiles p on p.person = v.id;
-  end if;
-end $$;
 
 -- ---------- Compromissos ----------
 create table if not exists public.events (
@@ -153,11 +130,12 @@ drop trigger if exists push_stamp on public.push_subscriptions;
 
 -- Versão antiga: acrescenta a família em cada tabela e tira as regras das seis pessoas fixas.
 do $$
-declare tname text; fid uuid := (select id from public.families order by created_at limit 1);
+declare tname text;
 begin
   foreach tname in array array['events','birthdays','list_items','todos','push_subscriptions'] loop
     execute format('alter table public.%I add column if not exists family_id uuid references public.families(id) on delete cascade', tname);
-    if fid is not null then execute format('update public.%I set family_id = $1 where family_id is null', tname) using fid; end if;
+    -- Dados da versão antiga, sem família, não aparecem para ninguém: são apagados.
+    execute format('delete from public.%I where family_id is null', tname);
     execute format('create index if not exists %I on public.%I (family_id)', tname || '_family', tname);
   end loop;
 end $$;
