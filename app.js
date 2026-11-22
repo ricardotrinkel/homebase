@@ -67,6 +67,26 @@ const EN={
  'Pode escolher várias pessoas de uma vez.':'You can pick several people at once.','Individual':'Individual','aniversário de {n}':'birthday of {n}','O dia é livre.':'',
 };
 Object.assign(EN,{
+ 'Filho':'Son','Outro':'Other','Todos os filhos':'All kids',
+ 'Criar conta ou entrar':'Create an account or sign in','Primeira vez? Digite seu email e crie uma senha.':'First time? Type your email and create a password.',
+ 'Email ou senha não conferem.':'Email or password doesn’t match.',
+ 'Sua família':'Your family','Criar família':'Create family','Entrar numa família':'Join a family',
+ 'Nome da família':'Family name','Ex.: Trinkel':'E.g. Smith','Código da família':'Family code','Mínimo de 6 letras ou números':'At least 6 letters or numbers',
+ 'As outras pessoas usam o nome da família e este código para entrar.':'Others use the family name and this code to join.',
+ 'Seu nome':'Your name','Você é':'You are','Sua cor':'Your color','Continuar':'Continue','Entrar na família':'Join family',
+ 'Quem é você?':'Who are you?','Sou nova(o) aqui':'I’m new here','Toque no seu nome ou crie um novo.':'Tap your name or create a new one.',
+ 'Não achamos essa família. Confira o nome e o código.':'We couldn’t find that family. Check the name and code.',
+ 'Já existe uma família com esse nome e código. Escolha outro código.':'A family with that name and code already exists. Choose another code.',
+ 'O código precisa ter pelo menos 6 letras ou números.':'The code needs at least 6 letters or numbers.',
+ 'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
+ 'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
+ 'Sair desta conta':'Sign out of this account','Família':'Family',
+ 'Para alguém entrar: nome da família + este código.':'To join: family name + this code.',
+ 'Admins':'Admins','Toque para escolher quem é admin. Admins veem e editam o horário de todos.':'Tap to choose admins. Admins see and edit everyone’s schedule.',
+ 'Mudar código':'Change code','Código trocado':'Code changed','Admins atualizados':'Admins updated',
+ 'Quem criou a família escolhe os admins.':'The family creator chooses the admins.',
+ 'Você é admin: vê e edita o horário de todos.':'You’re an admin: you see and edit everyone’s schedule.',
+
  'Mínimo de 6 caracteres':'At least 6 characters','A senha precisa ter pelo menos 6 caracteres.':'Password needs at least 6 characters.',
  'Enviamos um email de confirmação. Abra o link e depois entre de novo.':'We sent you a confirmation email. Open the link, then sign in again.',
  'Não deu para entrar agora. Verifique a internet e tente de novo.':'Couldn’t sign in right now. Check your connection and try again.',
@@ -94,14 +114,17 @@ function t(s,v){let r=LANG==='en'?(EN[s]??s):s;if(v)for(const k in v)r=r.split('
 const L=()=>DATES[LANG];
 
 /* ================= Data ================= */
-const PEOPLE=[
- {id:'liliane',name:'Liliane',role:'Mãe',color:'#FBB28B',admin:true,shape:'flower'},
- {id:'ricardo',name:'Ricardo',role:'Pai',color:'#6B515E',shape:'square'},
- {id:'isa',name:'Isa',role:'Filha',color:'#F7E289',admin:true,shape:'circle'},
- {id:'marina',name:'Marina',role:'Filha',color:'#A9AE97',shape:'tri'},
- {id:'gabi',name:'Gabi',role:'Filha',color:'#DBC0E8',shape:'cloud'},
- {id:'frieda',name:'Frieda',role:'Filha',color:'#EA5E86',shape:'penta'},
-];
+/* As pessoas vêm do servidor: cada família tem as suas. */
+const PEOPLE=[];
+const PALETTE=['#FBB28B','#6B515E','#F7E289','#A9AE97','#DBC0E8','#EA5E86','#F9A2C5'];
+const ROLES=['Mãe','Pai','Filha','Filho','Outro'];
+function setPeople(rows,resetFilter){
+  PEOPLE.length=0;
+  rows.forEach(m=>PEOPLE.push({id:m.id,name:m.name,role:m.role,color:m.color,shape:m.shape,admin:!!m.is_admin}));
+  if(resetFilter||!st.filter)st.filter=new Set([...PEOPLE.map(p=>p.id),'familia']);
+  else PEOPLE.forEach(p=>{if(!st.known||!st.known.has(p.id))st.filter.add(p.id)});
+  st.known=new Set(PEOPLE.map(p=>p.id));
+}
 const FAMILY={id:'familia',name:'Família toda',role:'Todos',color:'#F76F54',shape:'family'};
 const admins=()=>PEOPLE.filter(p=>p.admin).map(p=>p.name).join(LANG==='en'?' and ':' e ');
 const pname=p=>p.id==='familia'?t('Família toda'):p.name;
@@ -247,18 +270,14 @@ function renderLogin(){
   </section>
   <section class="lg-form gut">
     <form class="lg-card" id="lgForm" novalidate>
-      <div class="lg-top"><div><div class="eyebrow">${t('Entrar')}</div><h2 class="display">${t('Oi! Quem está aí?')}</h2></div>${langToggle()}</div>
+      <div class="lg-top"><div><div class="eyebrow">${t('Criar conta ou entrar')}</div><h2 class="display">${t('Oi! Quem está aí?')}</h2></div>${langToggle()}</div>
       <div class="field"><label for="lgEmail">${t('Email')}</label><input class="input" id="lgEmail" type="email" autocomplete="email" placeholder="voce@email.com"></div>
       <div class="field"><label for="lgPass">${t('Senha')}</label><input class="input" id="lgPass" type="password" autocomplete="current-password" placeholder="${t('Mínimo de 6 caracteres')}"></div>
-      <div class="field"><span class="flabel">${t('Qual pessoa é você?')}</span>
-        <div class="who" role="group" aria-label="${t('Escolha quem você é')}">${PEOPLE.map(p=>`<button type="button" data-pid="${p.id}" aria-pressed="${loginPick===p.id}" style="--c:${p.color}">${avatar(p,44)}<b>${p.name}</b><small>${t(p.role)}${p.admin?' · admin':''}</small></button>`).join('')}</div>
-      </div>
       <div class="err" id="lgErr" role="alert"></div>
       <button class="btn primary" type="submit">${t('Entrar')}</button>
-      <p class="note" style="color:#AEB5CA;margin:0">${t('No primeiro acesso de cada pessoa, o email e a senha digitados ficam salvos para ela. Depois, só entra com a mesma senha.')} <button type="button" class="linkish" id="lgForgot">${t('Esqueci a senha')}</button></p>
+      <p class="note" style="color:#AEB5CA;margin:0">${t('Primeira vez? Digite seu email e crie uma senha.')} <button type="button" class="linkish" id="lgForgot">${t('Esqueci a senha')}</button></p>
     </form>
   </section>`;
-  el.querySelectorAll('.who button').forEach(b=>b.onclick=()=>{loginPick=b.dataset.pid;el.querySelectorAll('.who button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   el.querySelector('#lgForgot').onclick=async()=>{const em=lgEmail.value.trim().toLowerCase();
     if(!/^\S+@\S+\.\S+$/.test(em))return lgErr.textContent=t('Digite seu email acima e toque de novo em “Esqueci a senha”.');
     lgErr.textContent='';const ok=await HB.forgot(em);toast(ok?t('Enviamos um link para criar uma senha nova.'):t('Não deu para entrar agora. Verifique a internet e tente de novo.'),'#F7E289',ok?em:'')};
@@ -266,15 +285,81 @@ function renderLogin(){
     e.preventDefault();const em=lgEmail.value.trim().toLowerCase(),pw=lgPass.value,err=lgErr;
     if(!/^\S+@\S+\.\S+$/.test(em))return err.textContent=t('Digite um email válido.');
     if(pw.length<6)return err.textContent=t('A senha precisa ter pelo menos 6 caracteres.');
-    if(!loginPick)return err.textContent=t('Escolha qual pessoa você é.');
     const sb=e.target.querySelector('[type=submit]');sb.disabled=true;sb.textContent=t('Entrando…');err.textContent='';
-    const r=await HB.signIn(em,pw,loginPick);sb.disabled=false;sb.textContent=t('Entrar');
-    if(r.err){const msg={mismatch:'Email ou senha não conferem com o acesso de {n}.',taken:'Esse email já está em uso por {n}.',confirm:'Enviamos um email de confirmação. Abra o link e depois entre de novo.',weak:'A senha precisa ter pelo menos 6 caracteres.'}[r.err]||'Não deu para entrar agora. Verifique a internet e tente de novo.';
-      return err.textContent=t(msg,{n:person(r.who||loginPick).name})}
-    route();
+    const r=await HB.signIn(em,pw);sb.disabled=false;sb.textContent=t('Entrar');
+    if(r.err){const msg={mismatch:'Email ou senha não conferem.',confirm:'Enviamos um email de confirmação. Abra o link e depois entre de novo.',weak:'A senha precisa ter pelo menos 6 caracteres.'}[r.err]||'Não deu para entrar agora. Verifique a internet e tente de novo.';
+      return err.textContent=t(msg)}
+    route();if(!db.session)return;
     const n=eventsOn(today(),db.events.filter(canSeeEvent).filter(ev=>ev.owner===me().id||ev.owner==='familia')).length;
     toast(t('Bem-vinda(o), {n}!',{n:me().name}),me().color,n?t('Hoje você tem {n} compromisso(s).',{n}):t('Seu dia está livre hoje.'));
     if(db.prefs.notif&&['off','install'].includes(HB.pushState()))setTimeout(openBell,900);
+  };
+}
+
+/* ================= Criar / entrar numa família ================= */
+let famState={tab:'create',found:null,claim:null,role:'Mãe',color:PALETTE[0]};
+function roleSeg(cur){return `<div class="seg" id="fRole">${ROLES.map(r=>`<button type="button" data-role="${r}" aria-pressed="${cur===r}">${t(r)}</button>`).join('')}</div>`}
+function colorPick(cur){return `<div class="swatches" id="fColor">${PALETTE.map(c=>`<button type="button" data-color="${c}" aria-pressed="${cur===c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div>`}
+function renderFamily(){
+  const el=document.getElementById('login'),F=famState;
+  const fam='Homebase',rb=['#FBB28B','#F7E289','#A9AE97','#DBC0E8','#EA5E86','#47B5A8','#A3C1E2','#F76F54','#F9A2C5'];
+  const meFields=`<div class="field"><label for="fMe">${t('Seu nome')}</label><input class="input" id="fMe" autocomplete="given-name" value="${esc(F.myName||'')}"></div>
+      <div class="field"><span class="flabel">${t('Você é')}</span>${roleSeg(F.role)}</div>
+      <div class="field"><span class="flabel">${t('Sua cor')}</span>${colorPick(F.color)}</div>`;
+  let body;
+  if(F.tab==='create'){
+    body=`<div class="field"><label for="fName">${t('Nome da família')}</label><input class="input" id="fName" value="${esc(F.name||'')}" placeholder="${t('Ex.: Trinkel')}"></div>
+      <div class="field"><label for="fCode">${t('Código da família')}</label><input class="input" id="fCode" value="${esc(F.code||'')}" placeholder="${t('Mínimo de 6 letras ou números')}" autocomplete="off" autocapitalize="characters"><p class="note" style="margin:4px 0 0">${t('As outras pessoas usam o nome da família e este código para entrar.')}</p></div>
+      ${meFields}<div class="err" id="fErr" role="alert"></div><button class="btn primary" type="submit">${t('Criar família')}</button>`;
+  }else if(!F.found){
+    body=`<div class="field"><label for="fName">${t('Nome da família')}</label><input class="input" id="fName" value="${esc(F.name||'')}" placeholder="${t('Ex.: Trinkel')}"></div>
+      <div class="field"><label for="fCode">${t('Código da família')}</label><input class="input" id="fCode" value="${esc(F.code||'')}" autocomplete="off" autocapitalize="characters"></div>
+      <div class="err" id="fErr" role="alert"></div><button class="btn primary" type="submit">${t('Continuar')}</button>`;
+  }else{
+    const ppl=F.found.people;
+    body=`<div class="field"><span class="flabel">${t('Quem é você?')}</span>
+        <p class="note" style="margin:0 0 6px">${t('Toque no seu nome ou crie um novo.')}</p>
+        <div class="who" role="group">${ppl.map(p=>`<button type="button" data-claim="${esc(p.id)}" aria-pressed="${F.claim===p.id}" style="--c:${p.color}">${avatar(p,44)}<b>${esc(p.name)}</b><small>${t(p.role)}</small></button>`).join('')}
+        <button type="button" data-claim="" aria-pressed="${F.claim===''}" style="--c:#F6EFE4">${sz(I.plus,40)}<b>${t('Sou nova(o) aqui')}</b><small>&nbsp;</small></button></div></div>
+      ${F.claim===''?meFields:''}
+      <div class="err" id="fErr" role="alert"></div><button class="btn primary" type="submit" ${F.claim==null?'disabled':''}>${t('Entrar na família')}</button>`;
+  }
+  el.innerHTML=`
+  <section class="lg-art gut">
+    <div><h1 class="lg-title display"><span class="rb">${[...fam].map((ch,i)=>`<i style="color:${rb[i%rb.length]}">${ch}</i>`).join('')}</span></h1></div>
+    <div class="pile" aria-hidden="true">${pileSVG()}</div>
+    <div class="lg-foot"></div>
+  </section>
+  <section class="lg-form gut">
+    <form class="lg-card" id="famForm" novalidate>
+      <div class="lg-top"><div><div class="eyebrow">${esc(HB.email())}</div><h2 class="display">${t('Sua família')}</h2></div>${langToggle()}</div>
+      <div class="seg" id="famTabs"><button type="button" data-ftab="create" aria-pressed="${F.tab==='create'}">${t('Criar família')}</button><button type="button" data-ftab="join" aria-pressed="${F.tab==='join'}">${t('Entrar numa família')}</button></div>
+      ${body}
+      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="famOut">${t('Sair desta conta')}</button></p>
+    </form>
+  </section>`;
+  const keep=()=>{const g=id=>el.querySelector('#'+id);if(g('fName'))F.name=g('fName').value;if(g('fCode'))F.code=g('fCode').value;if(g('fMe'))F.myName=g('fMe').value};
+  el.querySelectorAll('[data-ftab]').forEach(b=>b.onclick=()=>{keep();F.tab=b.dataset.ftab;F.found=null;F.claim=null;renderFamily()});
+  el.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{F.role=b.dataset.role;el.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  el.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{F.color=b.dataset.color;el.querySelectorAll('[data-color]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  el.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{keep();F.claim=b.dataset.claim;renderFamily()});
+  el.querySelector('#famOut').onclick=()=>{famState={tab:'create',found:null,claim:null,role:'Mãe',color:PALETTE[0]};HB.signOut().then(route)};
+  el.querySelector('#famForm').onsubmit=async e=>{e.preventDefault();keep();const err=el.querySelector('#fErr'),btn=e.target.querySelector('[type=submit]');
+    const ERR={family_exists:'Já existe uma família com esse nome e código. Escolha outro código.',short_code:'O código precisa ter pelo menos 6 letras ou números.',
+      not_found:'Não achamos essa família. Confira o nome e o código.',taken:'Essa pessoa acabou de ser escolhida por outro login.'};
+    const fail=k=>{btn.disabled=false;err.textContent=t(ERR[k]||'Não deu para entrar agora. Verifique a internet e tente de novo.')};
+    if(!(F.name||'').trim())return err.textContent=t('Digite o nome da família.');
+    if((F.code||'').trim().length<6)return err.textContent=t('O código precisa ter pelo menos 6 letras ou números.');
+    const needMe=F.tab==='create'||(F.found&&F.claim==='');
+    if(needMe&&!(F.myName||'').trim())return err.textContent=t('Digite seu nome.');
+    btn.disabled=true;err.textContent='';
+    let r;
+    if(F.tab==='create')r=await HB.createFamily(F.name,F.code,F.myName,F.role,F.color);
+    else if(!F.found){const f=await HB.findFamily(F.name,F.code);btn.disabled=false;if(!f||f.err)return fail(f?f.err:'not_found');F.found=f;F.claim=f.people.length?null:'';return renderFamily()}
+    else r=await HB.joinFamily(F.name,F.code,F.claim||null,F.myName,F.role,F.color);
+    if(r.err)return fail(r.err);
+    famState={tab:'create',found:null,claim:null,role:'Mãe',color:PALETTE[0]};
+    route();toast(t('Bem-vinda(o), {n}!',{n:me().name}),me().color);
   };
 }
 
@@ -308,7 +393,7 @@ function renderApp(){
 function sideHTML(){
   const p=me();
   return `
-  <div class="youcard">${avatar(p,52)}<div><b>${p.name}</b><p>${p.admin?t('Você é a admin: vê e edita o horário de todos.'):t('Você vê e edita o seu horário. Compromissos da família e aniversários compartilhados também aparecem.')}</p></div></div>
+  <div class="youcard">${avatar(p,52)}<div><b>${p.name}</b><p>${p.admin?t('Você é admin: vê e edita o horário de todos.'):t('Você vê e edita o seu horário. Compromissos da família e aniversários compartilhados também aparecem.')}</p></div></div>
   <div class="panel"><h3 class="eyebrow">${t('Cores')}</h3><div class="legend">
     ${(famView()?PEOPLE:[p]).map(x=>`<span style="--c:${x.color}"><i></i>${x.name}</span>`).join('')}
     <span style="--c:${C.family}"><i></i>${t('Compromissos da família')}</span>
@@ -507,12 +592,12 @@ function openDaySheet(k){
 function openEventForm(ev,preset={}){
   const p=me(),isNew=!ev;
   ev=ev||{owner:preset.owner||p.id,title:'',date:preset.date||key(st.cursor),start:preset.start||'09:00',end:preset.end||'10:00',repeat:'none',reminder:30,place:'',notes:''};
-  const owners=p.admin?[...PEOPLE,FAMILY]:[p];const daughters=PEOPLE.filter(x=>x.role==='Filha').map(x=>x.id);
+  const owners=p.admin?[...PEOPLE,FAMILY]:[p];const kids=PEOPLE.filter(x=>x.role==='Filha'||x.role==='Filho'),daughters=kids.map(x=>x.id),kidsLabel=kids.every(x=>x.role==='Filha')?'Todas as filhas':'Todos os filhos';
   openSheet(`${sheetHead(isNew?t('Novo compromisso'):t('Editar compromisso'),isNew?t('Marcar na agenda'):esc(ev.title))}
    <form id="evForm" class="list" style="gap:14px" novalidate>
     <div class="field"><label for="fTitle">${t('O que é')}</label><input class="input" id="fTitle" value="${esc(ev.title)}" placeholder="${t('Ex.: Dentista, aula de inglês')}"></div>
     <div class="field"><span class="flabel">${t('De quem')}</span>
-      ${p.admin?`<div class="chips" style="flex-wrap:wrap" id="fOwner">${isNew?`<button type="button" class="chip plain" data-all-d="1" aria-pressed="false" style="--c:var(--fg);--ct:var(--bg)">${t('Todas as filhas')}</button>`:''}${owners.map(o=>`<button type="button" class="chip" data-o="${o.id}" aria-pressed="${ev.owner===o.id}" style="--c:${o.color};--ct:${textOn(o.color)}">${avatar(o,22)}${esc(pname(o))}</button>`).join('')}</div>`
+      ${p.admin?`<div class="chips" style="flex-wrap:wrap" id="fOwner">${isNew&&kids.length>1?`<button type="button" class="chip plain" data-all-d="1" aria-pressed="false" style="--c:var(--fg);--ct:var(--bg)">${t(kidsLabel)}</button>`:''}${owners.map(o=>`<button type="button" class="chip" data-o="${o.id}" aria-pressed="${ev.owner===o.id}" style="--c:${o.color};--ct:${textOn(o.color)}">${avatar(o,22)}${esc(pname(o))}</button>`).join('')}</div>`
        :`<div class="chips"><span class="chip" aria-pressed="true" style="--c:${p.color};--ct:${textOn(p.color)}">${avatar(p,22)}${p.name}</span></div><p class="note" style="margin:0">${t('Você adiciona no seu horário. Compromissos da família toda são marcados pelas admins ({a}).',{a:admins()})}</p>`}
     </div>
     <label class="switch" for="fPriv"><span><b>${t('Só para mim')}</b><br><small class="note">${t('Fica privado: ninguém mais vê, nem as admins.')}</small></span><input type="checkbox" id="fPriv" ${ev.private?'checked':''}></label>
@@ -608,11 +693,33 @@ function openSettings(){
      <button data-theme-pick="dark" aria-pressed="${db.prefs.theme==='dark'}" style="background:#252D45;color:#F6EFE4">Night Time<small style="font-weight:600;opacity:.7">${t('Escuro (padrão)')}</small></button>
      <button data-theme-pick="light" aria-pressed="${db.prefs.theme==='light'}" style="background:#B79A65;color:#1E2438">Hay Fields<small style="font-weight:600;opacity:.7">${t('Claro')}</small></button>
    </div></div>
+   ${familyPanelHTML()}
    <label class="switch" for="sNotif"><span><b>${t('Lembretes')}</b><br><small class="note">${t('Avisos antes dos seus compromissos')}</small></span><input type="checkbox" id="sNotif" ${db.prefs.notif?'checked':''}></label>
    <div class="actions" style="justify-content:space-between"><div class="row" style="flex:1"></div><button class="btn danger" data-act="logout">${t('Sair')}</button></div>`,sh=>{
+    const cf=sh.querySelector('#famCodeForm');if(cf)cf.onsubmit=async e=>{e.preventDefault();const v=sh.querySelector('#famCode').value.trim(),er=sh.querySelector('#famErr');
+      if(v.length<6)return er.textContent=t('O código precisa ter pelo menos 6 letras ou números.');
+      const r=await HB.setCode(v);if(r.err)return er.textContent=t(r.err==='family_exists'?'Já existe uma família com esse nome e código. Escolha outro código.':'Não deu para salvar. Verifique a internet e tente de novo.');
+      er.textContent='';toast(t('Código trocado'),'#47B5A8',v)};
+    sh.querySelectorAll('[data-adm]').forEach(b=>b.onclick=async()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);
+      const ok=await HB.setAdmin(b.dataset.adm,on);if(!ok){b.setAttribute('aria-pressed',!on);toast(t('Não deu para salvar. Verifique a internet e tente de novo.'),'#EA5E86')}else toast(t('Admins atualizados'),'#47B5A8')});
     sh.querySelector('#sNotif').onchange=async e=>{db.prefs.notif=e.target.checked;save();renderApp();
       if(db.prefs.notif){const r=await HB.enablePush();if(r==='ok')toast(t('Notificações ativadas'),'#47B5A8');else if(r!=='unsupported')openBell()}else HB.disablePush()};
   });
+}
+function familyPanelHTML(){
+  const f=HB.family();if(!f)return'';
+  const owner=HB.isOwner();
+  return `<div class="panel famcard"><h3 class="eyebrow">${t('Família')}</h3>
+    <div class="famrow"><b class="display" style="font-size:24px">${esc(f.name)}</b>
+    ${owner?`<form id="famCodeForm" class="famcode"><input class="input" id="famCode" value="${esc(f.code)}" aria-label="${t('Código da família')}" autocomplete="off"><button class="btn ghost" type="submit">${t('Mudar código')}</button></form>`
+      :`<span class="codepill">${esc(f.code)}</span>`}</div>
+    <p class="note" style="margin:0">${t('Para alguém entrar: nome da família + este código.')}</p>
+    <div class="err" id="famErr" role="alert"></div>
+    <span class="flabel">${t('Admins')}</span>
+    ${owner?`<div class="chips" style="flex-wrap:wrap">${PEOPLE.map(x=>`<button type="button" class="chip" data-adm="${esc(x.id)}" aria-pressed="${x.admin}" style="--c:${x.color};--ct:${textOn(x.color)}">${avatar(x,22)}${esc(x.name)}</button>`).join('')}</div>
+      <p class="note" style="margin:0">${t('Toque para escolher quem é admin. Admins veem e editam o horário de todos.')}</p>`
+      :`<p style="margin:0">${esc(admins())||'—'}</p><p class="note" style="margin:0">${t('Quem criou a família escolhe os admins.')}</p>`}
+  </div>`;
 }
 function reminderList(){
   if(!db.session)return[];const out=[],now=new Date(),T=today();
@@ -736,11 +843,12 @@ function route(){
   applyTheme();closePop();
   const showIcons=location.hash==='#icones';
   document.getElementById('icons').hidden=!showIcons;
-  document.getElementById('login').hidden=showIcons||!!db.session;
+  document.getElementById('login').hidden=showIcons||(!!db.session&&!HB.needsFamily());
   document.getElementById('app').hidden=showIcons||!db.session;
   if(showIcons){renderIcons();scrollTo(0,0);return}
   scrollTo(0,0);
   document.getElementById('boot').hidden=true;
+  if(HB.needsFamily()){document.getElementById('app').hidden=true;renderFamily();return}
   if(db.session&&person(db.session))renderApp();else{db.session=null;renderLogin()}
 }
 addEventListener('hashchange',route);

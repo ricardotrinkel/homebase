@@ -4,7 +4,7 @@
    escuta mudanças feitas em outros aparelhos e cuida do login e das notificações. */
 window.HB = (() => {
   const CFG_LS = 'homebase-config', CACHE_LS = 'homebase-cache';
-  let sb = null, cfg = null, user = null, isOffline = false, isRecovery = false;
+  let sb = null, cfg = null, user = null, isOffline = false, isRecovery = false, family = null, needFamily = false;
   let synced = {}, queue = Promise.resolve(), pending = false, channel = null, pushOn = false;
 
   /* ---------- tabelas: como cada item do app vira uma linha no banco ---------- */
@@ -47,25 +47,33 @@ window.HB = (() => {
     T[n].set(data);
     synced[n] = snap(n);
   }
-  async function loadSettings() {
-    const { data } = await sb.from('settings').select('key,value');
-    const ic = (data || []).find(r => r.key === 'app_icon');
-    if (ic && ic.value != null) db.prefs.appIcon = +ic.value;
+  // A família e as pessoas dela.
+  async function loadFamily(resetFilter) {
+    const [{ data: f, error: e1 }, { data: ms, error: e2 }] = await Promise.all([
+      sb.from('families').select('*').maybeSingle(),
+      sb.from('members').select('*').order('created_at'),
+    ]);
+    if (e1 || e2) throw (e1 || e2);
+    family = f;
+    if (f) db.prefs.appIcon = f.app_icon;
+    setPeople(ms || [], resetFilter);
   }
-  async function loadAll() {
-    await Promise.all([...NAMES.map(loadTable), loadSettings()]);
+  async function loadAll(resetFilter) {
+    await loadFamily(resetFilter);
+    await Promise.all(NAMES.map(loadTable));
     isOffline = false;
     writeCache();
   }
   function writeCache() {
-    try { localStorage.setItem(CACHE_LS, JSON.stringify({ uid: user && user.id, session: db.session, events: db.events, birthdays: db.birthdays, lists: db.lists, todos: db.todos, appIcon: db.prefs.appIcon })); } catch (e) {}
+    try { localStorage.setItem(CACHE_LS, JSON.stringify({ uid: user && user.id, session: db.session, family, people: PEOPLE.map(p => ({ ...p, is_admin: p.admin })), events: db.events, birthdays: db.birthdays, lists: db.lists, todos: db.todos })); } catch (e) {}
   }
   function readCache() {
     try {
       const c = JSON.parse(localStorage.getItem(CACHE_LS) || 'null');
       if (!c || !user || c.uid !== user.id) return false;
+      if (!c.family || !c.people) return false;
+      family = c.family; db.prefs.appIcon = c.family.app_icon; setPeople(c.people, true);
       Object.assign(db, { session: c.session, events: c.events, birthdays: c.birthdays, lists: c.lists, todos: c.todos });
-      if (c.appIcon != null) db.prefs.appIcon = c.appIcon;
       NAMES.forEach(n => { synced[n] = snap(n); });
       return true;
     } catch (e) { return false; }
@@ -103,7 +111,7 @@ window.HB = (() => {
     clearTimeout(timers[n]);
     timers[n] = setTimeout(() => {
       queue = queue.then(async () => {
-        try { n === 'settings' ? await loadSettings() : await loadTable(n); writeCache(); changed(); } catch (e) {}
+        try { n === 'family' ? await loadFamily() : await loadTable(n); writeCache(); changed(); } catch (e) {}
       });
     }, 250);
   }
@@ -112,7 +120,8 @@ window.HB = (() => {
   function listen() {
     if (channel) sb.removeChannel(channel);
     channel = sb.channel('homebase');
-    [...NAMES, 'settings'].forEach(n => channel.on('postgres_changes', { event: '*', schema: 'public', table: n }, () => reload(n)));
+    NAMES.forEach(n => channel.on('postgres_changes', { event: '*', schema: 'public', table: n }, () => reload(n)));
+    ['families', 'members'].forEach(n => channel.on('postgres_changes', { event: '*', schema: 'public', table: n }, () => reload('family')));
     channel.subscribe();
   }
   document.addEventListener('visibilitychange', () => {
@@ -122,52 +131,76 @@ window.HB = (() => {
   });
 
   /* ---------- login ---------- */
-  async function myPerson() {
-    const { data, error } = await sb.from('profiles').select('person').eq('user_id', user.id).maybeSingle();
+  async function myMember() {
+    const { data, error } = await sb.from('members').select('id').eq('user_id', user.id).maybeSingle();
     if (error) throw error;
-    return data && data.person;
+    return data && data.id;
   }
-  async function start(person) {
-    db.session = person;
-    await loadAll();
+  async function start(memberId) {
+    needFamily = false;
+    db.session = memberId;
+    await loadAll(true);
     listen();
     refreshPush();
   }
-  async function signIn(email, password, pick) {
+  // Entra com email e senha; se ainda não existe conta com esse email, cria.
+  async function signIn(email, password) {
     try {
       let { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) {
         if (/confirm/i.test(error.message)) return { err: 'confirm' };
         if (!/invalid/i.test(error.message)) return { err: 'net' };
-        // Ainda não existe conta com este email e senha: se a pessoa escolhida está livre, cria.
-        const { data: claimed, error: e2 } = await sb.rpc('claimed_people');
-        if (e2) return { err: 'net' };
-        if ((claimed || []).includes(pick)) return { err: 'mismatch' };
         const r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin } });
         if (r.error) return { err: /already|registered|exists/i.test(r.error.message) ? 'mismatch' : /password/i.test(r.error.message) ? 'weak' : 'net' };
         if (!r.data.session) return { err: 'confirm' };
+        // Email já cadastrado com outra senha: o Supabase devolve um usuário sem identidades.
+        if (r.data.user && Array.isArray(r.data.user.identities) && !r.data.user.identities.length) return { err: 'mismatch' };
         data = r.data;
       }
       user = data.user;
-      let p = await myPerson();
-      if (p && p !== pick) { await sb.auth.signOut(); user = null; return { err: 'taken', who: p }; }
-      if (!p) {
-        const { error: ce } = await sb.rpc('claim_person', { p: pick });
-        if (ce) { await sb.auth.signOut(); user = null; return { err: 'mismatch' }; }
-        p = pick;
-      }
-      await start(p);
+      const m = await myMember();
+      if (m) await start(m); else { needFamily = true; db.session = null; }
       return { ok: true };
     } catch (e) {
       console.error(e);
       return { err: 'net' };
     }
   }
+  const rpcErr = e => { const m = (e && e.message) || ''; return (m.match(/family_exists|short_code|not_found|taken|already_member|not_owner/) || ['net'])[0]; };
+  async function createFamily(name, code, myName, role, color) {
+    const { data, error } = await sb.rpc('create_family', { fname: name.trim(), fcode: code.trim(), my_name: myName.trim(), my_role: role, my_color: color });
+    if (error) return { err: rpcErr(error) };
+    try { await start(data); } catch (e) { return { err: 'net' }; }
+    return { ok: true };
+  }
+  async function findFamily(name, code) {
+    const { data, error } = await sb.rpc('find_family', { fname: name.trim(), fcode: code.trim() });
+    if (error) return { err: rpcErr(error) };
+    return data;
+  }
+  async function joinFamily(name, code, claimId, myName, role, color) {
+    const { data, error } = await sb.rpc('join_family', { fname: name.trim(), fcode: code.trim(), claim_id: claimId, my_name: (myName || '').trim(), my_role: role, my_color: color });
+    if (error) return { err: rpcErr(error) };
+    try { await start(data); } catch (e) { return { err: 'net' }; }
+    return { ok: true };
+  }
+  async function setAdmin(id, on) {
+    const { error } = await sb.rpc('set_admin', { member_id: id, make_admin: on });
+    if (error) return false;
+    await loadFamily(); changed();
+    return true;
+  }
+  async function setCode(code) {
+    const { error } = await sb.rpc('set_family_code', { new_code: code });
+    if (error) return { err: rpcErr(error) };
+    await loadFamily(); writeCache();
+    return { ok: true };
+  }
   async function signOut() {
     try { await disablePush(); } catch (e) {}
     try { if (channel) sb.removeChannel(channel); channel = null; await sb.auth.signOut(); } catch (e) {}
     try { localStorage.removeItem(CACHE_LS); } catch (e) {}
-    user = null; db.session = null; synced = {};
+    user = null; db.session = null; synced = {}; family = null; needFamily = false; setPeople([], true);
     Object.assign(db, { events: [], birthdays: [], lists: { mercado: [], farmacia: [] }, todos: {} });
   }
   async function forgot(email) {
@@ -198,9 +231,9 @@ window.HB = (() => {
     user = session.user;
     const hadCache = readCache();
     try {
-      const p = await myPerson();
-      if (!p) { await sb.auth.signOut(); user = null; db.session = null; return true; }
-      await start(p);
+      const m = await myMember();
+      if (!m) { needFamily = true; db.session = null; return true; }
+      await start(m);
     } catch (e) {
       // Sem internet: usa o que ficou salvo neste aparelho.
       isOffline = hadCache;
@@ -211,8 +244,8 @@ window.HB = (() => {
 
   /* ---------- ícone do app (só admins) ---------- */
   async function setAppIcon(i) {
-    const { error } = await sb.from('settings').update({ value: i }).eq('key', 'app_icon');
-    if (error) { toast(t('Não deu para salvar. Verifique a internet e tente de novo.'), '#EA5E86'); loadSettings().then(changed); }
+    const { error } = await sb.from('families').update({ app_icon: i }).eq('id', family && family.id);
+    if (error) { toast(t('Não deu para salvar. Verifique a internet e tente de novo.'), '#EA5E86'); loadFamily().then(changed); }
   }
 
   /* ---------- notificações push ---------- */
@@ -273,6 +306,10 @@ window.HB = (() => {
 
   const api = {
     boot, signIn, signOut, forgot, setPassword, push, flush, setAppIcon,
+    createFamily, findFamily, joinFamily, setAdmin, setCode,
+    needsFamily: () => needFamily,
+    family: () => family,
+    isOwner: () => !!(family && family.owner_member === db.session),
     enablePush, disablePush, refreshPush, pushState,
     email: () => (user && user.email) || '',
     offline: () => isOffline,

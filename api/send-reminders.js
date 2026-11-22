@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   const [{ data: subs, error: e1 }, { data: events, error: e2 }] = await Promise.all([
     db.from('push_subscriptions').select('*'),
-    db.from('events').select('id,owner,by_person,title,date,start_time,repeat,reminder,place,private').gte('reminder', 0),
+    db.from('events').select('id,family_id,owner,by_person,title,date,start_time,repeat,reminder,place,private').gte('reminder', 0),
   ]);
   if (e1 || e2) return res.status(500).json({ error: (e1 || e2).message });
 
@@ -28,7 +28,9 @@ export default async function handler(req, res) {
 
   let sent = 0, removed = 0;
   for (const [person, list] of Object.entries(byPerson)) {
-    const due = dueFor(person, events, now, list[0].tz || 'America/Sao_Paulo');
+    // Só os compromissos da família desta pessoa ("familia" é a família dela, não as outras).
+    const famEvents = events.filter(e => e.family_id === list[0].family_id);
+    const due = dueFor(person, famEvents, now, list[0].tz || 'America/Sao_Paulo');
     for (const item of due) {
       // Marca como enviado; se já estava marcado, pula (evita aviso repetido).
       const { data: ins, error } = await db.from('reminders_sent')

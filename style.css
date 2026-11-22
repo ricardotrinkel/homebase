@@ -318,3 +318,16 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pushcard{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line2);border-radius:18px;padding:14px 16px}
 .pushcard p{margin:0}
 .pushcard .btn{align-self:flex-start}
+
+/* ===== Famílias: criar/entrar, cores, código ===== */
+#famTabs button{flex:1}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatches button{width:38px;height:38px;border-radius:50%;background:var(--c);border:3px solid transparent;box-shadow:0 0 0 1px rgba(255,255,255,.15) inset;cursor:pointer}
+.swatches button[aria-pressed="true"]{border-color:var(--paper);box-shadow:0 0 0 2px var(--c)}
+.famcard{display:flex;flex-direction:column;gap:10px}
+.famrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.famcode{display:flex;gap:8px;align-items:center;flex:1;min-width:220px;justify-content:flex-end}
+.famcode .input{max-width:200px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.codepill{background:var(--surface2);border-radius:999px;padding:6px 14px;font-weight:800;letter-spacing:.06em}
+.who svg{color:var(--paper)}
+.sheet .famcard{background:var(--surface);border:1px solid var(--line2);border-radius:18px;padding:14px 16px}.sheet .famcard h3{margin:0}

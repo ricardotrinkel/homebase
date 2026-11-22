@@ -10,9 +10,11 @@ com notificações de lembrete mesmo com o app fechado.
 
 ## Regras de quem vê o quê
 
-As regras ficam no banco (não só no app), então valem em qualquer aparelho:
+As regras ficam no banco (não só no app), então valem em qualquer aparelho, e uma família nunca vê os dados de outra:
 
-- Liliane e Isa são admins: veem e editam o horário de todos.
+- Cada família tem nome + código. Quem cria a família escolhe os admins e pode mudar o código.
+- Para entrar: criar conta (email + senha) → criar família, ou entrar numa família com nome + código.
+- Admins veem e editam o horário de todos da família.
 - As outras pessoas veem e editam só o próprio horário, mais os compromissos da família.
 - "Só para mim": só quem marcou vê, nem as admins.
 - Aniversário da família: todos veem. Individual: só quem criou, ou quem criou + pessoas escolhidas.
