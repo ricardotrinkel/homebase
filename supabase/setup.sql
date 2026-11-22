@@ -30,24 +30,37 @@ create table if not exists public.members (
 );
 create index if not exists members_family on public.members (family_id);
 
+-- Cada login (email ou só o código da família, em qualquer aparelho) aponta para uma pessoa.
+-- Uma pessoa pode ter vários logins: celular, computador, iPad...
+create table if not exists public.logins (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  member_id  text not null references public.members(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists logins_member on public.logins (member_id);
+insert into public.logins (user_id, member_id)
+  select user_id, id from public.members where user_id is not null
+  on conflict (user_id) do nothing;
+alter table public.logins enable row level security;
+
 -- Quem é a pessoa logada (id da pessoa) e de qual família ela é.
 create or replace function public.my_person() returns text
 language sql stable security definer set search_path = public as $$
-  select id from public.members where user_id = auth.uid()
+  select member_id from public.logins where user_id = auth.uid()
 $$;
 create or replace function public.my_family() returns uuid
 language sql stable security definer set search_path = public as $$
-  select family_id from public.members where user_id = auth.uid()
+  select m.family_id from public.members m join public.logins l on l.member_id = m.id where l.user_id = auth.uid()
 $$;
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from public.members where user_id = auth.uid()), false)
+  select coalesce((select m.is_admin from public.members m join public.logins l on l.member_id = m.id where l.user_id = auth.uid()), false)
 $$;
 -- Quem criou a família (é quem escolhe os admins e muda o código).
 create or replace function public.is_owner() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select f.owner_member = m.id from public.members m join public.families f on f.id = m.family_id
-                   where m.user_id = auth.uid()), false)
+  select coalesce((select f.owner_member = l.member_id from public.logins l join public.members m on m.id = l.member_id
+                   join public.families f on f.id = m.family_id where l.user_id = auth.uid()), false)
 $$;
 
 -- ---------- Compromissos ----------
@@ -279,7 +292,8 @@ declare fid uuid; mid text; o jsonb; n int := 1;
   shapes text[] := array['flower','square','circle','tri','cloud','penta'];
 begin
   if auth.uid() is null then raise exception 'not_signed_in'; end if;
-  if exists (select 1 from members where user_id = auth.uid()) then raise exception 'already_member'; end if;
+  if exists (select 1 from logins where user_id = auth.uid()) then raise exception 'already_member'; end if;
+  if coalesce((select is_anonymous from auth.users where id = auth.uid()), false) then raise exception 'needs_email'; end if;
   if length(trim(coalesce(fcode,''))) < 6 then raise exception 'short_code'; end if;
   if exists (select 1 from families where lower(trim(name)) = lower(trim(fname)) and upper(trim(code)) = upper(trim(fcode))) then
     raise exception 'family_exists';
@@ -287,6 +301,7 @@ begin
   insert into families (name, code) values (trim(fname), trim(fcode)) returning id into fid;
   insert into members (family_id, user_id, name, role, color, shape, is_admin, created_at)
     values (fid, auth.uid(), trim(my_name), my_role, my_color, shapes[1], coalesce(my_admin, true), now()) returning id into mid;
+  insert into logins (user_id, member_id) values (auth.uid(), mid);
   for o in select * from jsonb_array_elements(coalesce(others, '[]'::jsonb)) loop
     if length(trim(coalesce(o->>'name',''))) > 0 then
       insert into members (family_id, name, role, color, shape, is_admin, created_at)
@@ -310,7 +325,7 @@ begin
   return mid;
 end $$;
 
--- Procura a família pelo nome + código e mostra as pessoas que ainda não têm login.
+-- Procura a família pelo nome + código e mostra as pessoas (menos quem criou, que entra com email).
 create or replace function public.find_family(fname text, fcode text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare f families;
@@ -320,7 +335,7 @@ begin
   if f.id is null then return null; end if;
   return jsonb_build_object('name', f.name, 'people', coalesce((
     select jsonb_agg(jsonb_build_object('id', id, 'name', name, 'role', role, 'color', color, 'shape', shape) order by created_at)
-    from members where family_id = f.id and user_id is null), '[]'::jsonb));
+    from members where family_id = f.id and id is distinct from f.owner_member), '[]'::jsonb));
 end $$;
 
 create or replace function public.join_family(fname text, fcode text, claim_id text, my_name text, my_role text, my_color text) returns text
@@ -328,16 +343,22 @@ language plpgsql security definer set search_path = public as $$
 declare f families; mid text;
 begin
   if auth.uid() is null then raise exception 'not_signed_in'; end if;
-  if exists (select 1 from members where user_id = auth.uid()) then raise exception 'already_member'; end if;
+  -- quem criou uma família não troca de pessoa
+  if exists (select 1 from families fa join logins l on l.member_id = fa.owner_member where l.user_id = auth.uid()) then
+    raise exception 'already_member';
+  end if;
   select * into f from families where lower(trim(name)) = lower(trim(fname)) and upper(trim(code)) = upper(trim(fcode));
   if f.id is null then raise exception 'not_found'; end if;
   if claim_id is not null then
-    update members set user_id = auth.uid() where id = claim_id and family_id = f.id and user_id is null returning id into mid;
+    select id into mid from members where id = claim_id and family_id = f.id and id is distinct from f.owner_member;
     if mid is null then raise exception 'taken'; end if;
   else
-    insert into members (family_id, user_id, name, role, color, shape)
-      values (f.id, auth.uid(), trim(my_name), my_role, my_color, next_shape(f.id)) returning id into mid;
+    if length(trim(coalesce(my_name,''))) = 0 then raise exception 'no_name'; end if;
+    insert into members (family_id, name, role, color, shape)
+      values (f.id, trim(my_name), coalesce(my_role,'Outro'), my_color, next_shape(f.id)) returning id into mid;
   end if;
+  insert into logins (user_id, member_id) values (auth.uid(), mid)
+    on conflict (user_id) do update set member_id = excluded.member_id, created_at = now();
   return mid;
 end $$;
 
@@ -372,7 +393,8 @@ drop table if exists public.settings;
 -- ---------- Permissões de acesso pela internet ----------
 revoke all on public.families, public.members, public.events, public.birthdays, public.list_items, public.todos,
               public.push_subscriptions, public.reminders_sent from anon;
-revoke all on public.families, public.members from authenticated;
+revoke all on public.families, public.members, public.logins from authenticated;
+revoke all on public.logins from anon;
 grant select on public.families, public.members to authenticated;
 grant update (app_icon) on public.families to authenticated;
 grant select, insert, update, delete on public.events, public.birthdays, public.list_items,

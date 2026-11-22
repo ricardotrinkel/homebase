@@ -70,7 +70,7 @@ Object.assign(EN,{
  'Começa em':'Starts on','Repete até':'Repeats until','Ex.: o último dia de aula. Deixe vazio para repetir sempre.':'E.g. the last day of school. Leave empty to repeat forever.',
  'A data final precisa ser depois da data de início.':'The end date needs to be after the start date.','até {d}':'until {d}',
  'Pessoas da família':'Family members','Nome':'Name','Adicionar pessoa':'Add person','Admin':'Admin','Pessoa adicionada':'Person added','Digite o nome da pessoa.':'Type the person’s name.',
- 'Coloque o nome e a cor de cada um e marque quem é admin. Cada pessoa depois entra com o próprio email e toca no seu nome.':'Add each person’s name and color and mark the admins. Later, each person signs in with their own email and taps their name.',
+ 'Coloque o nome e a cor de cada um e marque quem é admin. As outras pessoas entram só com o nome da família e o código, e tocam no seu nome.':'Add each person’s name and color and mark the admins. Later, each person signs in with their own email and taps their name.',
  'Filho':'Son','Outro':'Other','Todos os filhos':'All kids',
  'Criar conta ou entrar':'Create an account or sign in','Primeira vez? Digite seu email e crie uma senha.':'First time? Type your email and create a password.',
  'Email ou senha não conferem.':'Email or password doesn’t match.',
@@ -84,7 +84,14 @@ Object.assign(EN,{
  'O código precisa ter pelo menos 6 letras ou números.':'The code needs at least 6 letters or numbers.',
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
- 'Sair desta conta':'Sign out of this account','Família':'Family',
+ 'Sair desta conta':'Sign out of this account',
+ 'Quem criou a família':'Whoever created the family','Entrar com email':'Sign in with email','Vai criar uma família? Digite seu email e crie uma senha.':'Creating a family? Type your email and create a password.',
+ 'Sua família já existe? Entre só com o nome e o código':'Family already exists? Join with just its name and code','Entrar na família':'Join your family',
+ 'Digite o nome da família e o código que quem criou a família escolheu.':'Type the family name and the code chosen by whoever created it.','Criou a família? Entre com email':'Created the family? Sign in with email',
+ 'Essa pessoa entra com email. Use “Criou a família? Entre com email”.':'This person signs in with email. Use “Created the family? Sign in with email”.','Para criar uma família, entre com email.':'To create a family, sign in with email.',
+ 'O login só com código ainda não foi ligado no Supabase.':'Code-only sign-in is not turned on in Supabase yet.','Entrou com o código da família':'Signed in with the family code',
+ 'Coloque o nome e a cor de cada um e marque quem é admin. As outras pessoas entram só com o nome da família e o código, e tocam no seu nome.':'Add each person’s name and color and mark the admins. Everyone else joins with just the family name and code, and taps their name.',
+ 'Toque no seu nome ou crie um novo. Pode usar em quantos aparelhos quiser.':'Tap your name or create a new one. You can use as many devices as you like.','Família':'Family',
  'Para alguém entrar: nome da família + este código.':'To join: family name + this code.',
  'Admins':'Admins','Toque para escolher quem é admin. Admins veem e editam o horário de todos.':'Tap to choose admins. Admins see and edit everyone’s schedule.',
  'Mudar código':'Change code','Código trocado':'Code changed','Admins atualizados':'Admins updated',
@@ -253,7 +260,7 @@ function pileSVG(){
     const ring=c==='#252D45'?`<circle cx="32" cy="33" r="26" fill="none" stroke="#F6EFE4" stroke-opacity=".35" stroke-width="1.5"/>`:'';
     return `<g transform="rotate(${r} ${x+s/2} ${y+s/2})"><g class="bob" style="animation-delay:${(-i*0.37).toFixed(2)}s"><svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="0 0 64 64" overflow="visible">${inner}${ring}</svg></g></g>`}).join('')}</svg>`;
 }
-let loginPick=null;
+let loginPick=null,loginMode='code';
 function renderLogin(){
   const el=document.getElementById('login');
   const tiles=[
@@ -274,14 +281,16 @@ function renderLogin(){
   </section>
   <section class="lg-form gut">
     <form class="lg-card" id="lgForm" novalidate>
-      <div class="lg-top"><div><div class="eyebrow">${t('Criar conta ou entrar')}</div><h2 class="display">${t('Oi! Quem está aí?')}</h2></div>${langToggle()}</div>
+      <div class="lg-top"><div><div class="eyebrow">${t('Quem criou a família')}</div><h2 class="display">${t('Entrar com email')}</h2></div>${langToggle()}</div>
       <div class="field"><label for="lgEmail">${t('Email')}</label><input class="input" id="lgEmail" type="email" autocomplete="email" placeholder="voce@email.com"></div>
       <div class="field"><label for="lgPass">${t('Senha')}</label><input class="input" id="lgPass" type="password" autocomplete="current-password" placeholder="${t('Mínimo de 6 caracteres')}"></div>
       <div class="err" id="lgErr" role="alert"></div>
       <button class="btn primary" type="submit">${t('Entrar')}</button>
-      <p class="note" style="color:#AEB5CA;margin:0">${t('Primeira vez? Digite seu email e crie uma senha.')} <button type="button" class="linkish" id="lgForgot">${t('Esqueci a senha')}</button></p>
+      <p class="note" style="color:#AEB5CA;margin:0">${t('Vai criar uma família? Digite seu email e crie uma senha.')} <button type="button" class="linkish" id="lgForgot">${t('Esqueci a senha')}</button></p>
+      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="lgCode">${t('Sua família já existe? Entre só com o nome e o código')}</button></p>
     </form>
   </section>`;
+  el.querySelector('#lgCode').onclick=()=>{loginMode='code';famState=newFam();famState.tab='join';route()};
   el.querySelector('#lgForgot').onclick=async()=>{const em=lgEmail.value.trim().toLowerCase();
     if(!/^\S+@\S+\.\S+$/.test(em))return lgErr.textContent=t('Digite seu email acima e toque de novo em “Esqueci a senha”.');
     lgErr.textContent='';const ok=await HB.forgot(em);toast(ok?t('Enviamos um link para criar uma senha nova.'):t('Não deu para entrar agora. Verifique a internet e tente de novo.'),'#F7E289',ok?em:'')};
@@ -318,7 +327,8 @@ function personCard(p,i){
 function roleSeg(cur){return `<div class="seg" id="fRole">${ROLES.map(r=>`<button type="button" data-role="${r}" aria-pressed="${cur===r}">${t(r)}</button>`).join('')}</div>`}
 function colorPick(cur){return `<div class="swatches" id="fColor">${PALETTE.map(c=>`<button type="button" data-color="${c}" aria-pressed="${cur===c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div>`}
 function renderFamily(){
-  const el=document.getElementById('login'),F=famState;
+  const el=document.getElementById('login'),F=famState,codeMode=HB.isAnon();
+  if(codeMode)F.tab='join';
   const fam='Homebase',rb=['#FBB28B','#F7E289','#A9AE97','#DBC0E8','#EA5E86','#47B5A8','#A3C1E2','#F76F54','#F9A2C5'];
   const meFields=`<div class="field"><label for="fMe">${t('Seu nome')}</label><input class="input" id="fMe" autocomplete="given-name" value="${esc(F.myName||'')}"></div>
       <div class="field"><span class="flabel">${t('Você é')}</span>${roleSeg(F.role)}</div>
@@ -328,7 +338,7 @@ function renderFamily(){
     body=`<div class="field"><label for="fName">${t('Nome da família')}</label><input class="input" id="fName" value="${esc(F.name||'')}" placeholder="${t('Ex.: Trinkel')}"></div>
       <div class="field"><label for="fCode">${t('Código da família')}</label><input class="input" id="fCode" value="${esc(F.code||'')}" placeholder="${t('Mínimo de 6 letras ou números')}" autocomplete="off" autocapitalize="characters"><p class="note" style="margin:4px 0 0">${t('As outras pessoas usam o nome da família e este código para entrar.')}</p></div>
       <div class="field"><span class="flabel">${t('Pessoas da família')}</span>
-        <p class="note" style="margin:0 0 4px">${t('Coloque o nome e a cor de cada um e marque quem é admin. Cada pessoa depois entra com o próprio email e toca no seu nome.')}</p>
+        <p class="note" style="margin:0 0 4px">${t('Coloque o nome e a cor de cada um e marque quem é admin. As outras pessoas entram só com o nome da família e o código, e tocam no seu nome.')}</p>
         <div class="plist">${F.people.map(personCard).join('')}</div>
         <button type="button" class="btn ghost" id="addPerson" style="align-self:flex-start">${sz(I.plus,16)}${t('Adicionar pessoa')}</button></div>
       <div class="err" id="fErr" role="alert"></div><button class="btn primary" type="submit">${t('Criar família')}</button>`;
@@ -339,7 +349,7 @@ function renderFamily(){
   }else{
     const ppl=F.found.people;
     body=`<div class="field"><span class="flabel">${t('Quem é você?')}</span>
-        <p class="note" style="margin:0 0 6px">${t('Toque no seu nome ou crie um novo.')}</p>
+        <p class="note" style="margin:0 0 6px">${t('Toque no seu nome ou crie um novo. Pode usar em quantos aparelhos quiser.')}</p>
         <div class="who" role="group">${ppl.map(p=>`<button type="button" data-claim="${esc(p.id)}" aria-pressed="${F.claim===p.id}" style="--c:${p.color}">${avatar(p,44)}<b>${esc(p.name)}</b><small>${t(p.role)}</small></button>`).join('')}
         <button type="button" data-claim="" aria-pressed="${F.claim===''}" style="--c:#F6EFE4">${sz(I.plus,40)}<b>${t('Sou nova(o) aqui')}</b><small>&nbsp;</small></button></div></div>
       ${F.claim===''?meFields:''}
@@ -353,10 +363,11 @@ function renderFamily(){
   </section>
   <section class="lg-form gut">
     <form class="lg-card" id="famForm" novalidate>
-      <div class="lg-top"><div><div class="eyebrow">${esc(HB.email())}</div><h2 class="display">${t('Sua família')}</h2></div>${langToggle()}</div>
-      <div class="seg" id="famTabs"><button type="button" data-ftab="create" aria-pressed="${F.tab==='create'}">${t('Criar família')}</button><button type="button" data-ftab="join" aria-pressed="${F.tab==='join'}">${t('Entrar numa família')}</button></div>
+      <div class="lg-top"><div><div class="eyebrow">${codeMode?t('Entrar na família'):esc(HB.email())}</div><h2 class="display">${codeMode?t('Oi! Quem está aí?'):t('Sua família')}</h2></div>${langToggle()}</div>
+      ${codeMode?`<p class="note" style="margin:0">${t('Digite o nome da família e o código que quem criou a família escolheu.')}</p>`:''}
+      <div class="seg" id="famTabs" ${codeMode?'hidden':''}><button type="button" data-ftab="create" aria-pressed="${F.tab==='create'}">${t('Criar família')}</button><button type="button" data-ftab="join" aria-pressed="${F.tab==='join'}">${t('Entrar numa família')}</button></div>
       ${body}
-      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="famOut">${t('Sair desta conta')}</button></p>
+      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="famOut">${codeMode?t('Criou a família? Entre com email'):t('Sair desta conta')}</button></p>
     </form>
   </section>`;
   const keep=()=>{const g=id=>el.querySelector('#'+id);if(g('fName'))F.name=g('fName').value;if(g('fCode'))F.code=g('fCode').value;if(g('fMe'))F.myName=g('fMe').value;
@@ -368,10 +379,11 @@ function renderFamily(){
   el.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{F.role=b.dataset.role;el.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   el.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{F.color=b.dataset.color;el.querySelectorAll('[data-color]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   el.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{keep();F.claim=b.dataset.claim;renderFamily()});
-  el.querySelector('#famOut').onclick=()=>{famState=newFam();HB.signOut().then(route)};
+  el.querySelector('#famOut').onclick=()=>{famState=newFam();loginMode='email';HB.signOut().then(route)};
   el.querySelector('#famForm').onsubmit=async e=>{e.preventDefault();keep();const err=el.querySelector('#fErr'),btn=e.target.querySelector('[type=submit]');
     const ERR={family_exists:'Já existe uma família com esse nome e código. Escolha outro código.',short_code:'O código precisa ter pelo menos 6 letras ou números.',
-      not_found:'Não achamos essa família. Confira o nome e o código.',taken:'Essa pessoa acabou de ser escolhida por outro login.'};
+      not_found:'Não achamos essa família. Confira o nome e o código.',taken:'Essa pessoa entra com email. Use “Criou a família? Entre com email”.',
+      needs_email:'Para criar uma família, entre com email.',no_name:'Digite seu nome.',anon_off:'O login só com código ainda não foi ligado no Supabase.'};
     const fail=k=>{btn.disabled=false;err.textContent=t(ERR[k]||'Não deu para entrar agora. Verifique a internet e tente de novo.')};
     if(!(F.name||'').trim())return err.textContent=t('Digite o nome da família.');
     if((F.code||'').trim().length<6)return err.textContent=t('O código precisa ter pelo menos 6 letras ou números.');
@@ -715,7 +727,7 @@ function openBrand(){
 function openSettings(){
   const p=me();
   openSheet(`${sheetHead(t('Conta'),p.name)}
-   <div class="youcard">${avatar(p,48)}<div><b>${esc(HB.email())}</b><p>${t(p.role)}${p.admin?' · '+t('admin da família'):''}</p></div></div>
+   <div class="youcard">${avatar(p,48)}<div><b>${HB.isAnon()?t('Entrou com o código da família'):esc(HB.email())}</b><p>${t(p.role)}${p.admin?' · '+t('admin da família'):''}</p></div></div>
    <div class="field"><span class="flabel">${t('Idioma')} / Language</span><div class="seg"><button type="button" data-lang="pt" aria-pressed="${LANG==='pt'}">Português</button><button type="button" data-lang="en" aria-pressed="${LANG==='en'}">English</button></div></div>
    <div class="field"><span class="flabel">${t('Fundo do calendário')}</span><div class="themepick">
      <button data-theme-pick="dark" aria-pressed="${db.prefs.theme==='dark'}" style="background:#252D45;color:#F6EFE4">Night Time<small style="font-weight:600;opacity:.7">${t('Escuro (padrão)')}</small></button>
@@ -889,7 +901,7 @@ function route(){
   scrollTo(0,0);
   document.getElementById('boot').hidden=true;
   if(HB.needsFamily()){document.getElementById('app').hidden=true;renderFamily();return}
-  if(db.session&&person(db.session))renderApp();else{db.session=null;renderLogin()}
+  if(db.session&&person(db.session))renderApp();else{db.session=null;if(loginMode==='code'){famState.tab='join';renderFamily()}else renderLogin()}
 }
 addEventListener('hashchange',route);
 /* Quando chega uma mudança de outro aparelho: redesenha sem atrapalhar quem está digitando. */

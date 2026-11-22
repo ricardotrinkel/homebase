@@ -139,9 +139,9 @@ window.HB = (() => {
 
   /* ---------- login ---------- */
   async function myMember() {
-    const { data, error } = await sb.from('members').select('id').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await sb.rpc('my_person');
     if (error) throw error;
-    return data && data.id;
+    return data || null;
   }
   async function start(memberId) {
     needFamily = false;
@@ -173,7 +173,7 @@ window.HB = (() => {
       return { err: 'net' };
     }
   }
-  const rpcErr = e => { const m = (e && e.message) || ''; return (m.match(/family_exists|short_code|not_found|taken|already_member|not_owner/) || ['net'])[0]; };
+  const rpcErr = e => { const m = (e && e.message) || ''; return (m.match(/family_exists|short_code|not_found|taken|already_member|not_owner|needs_email|no_name/) || ['net'])[0]; };
   async function createFamily(name, code, me, others) {
     const { data, error } = await sb.rpc('create_family', {
       fname: name.trim(), fcode: code.trim(), my_name: me.name.trim(), my_role: me.role, my_color: me.color, my_admin: !!me.admin,
@@ -183,7 +183,16 @@ window.HB = (() => {
     try { await start(data); } catch (e) { return { err: 'net' }; }
     return { ok: true };
   }
+  // Quem não criou a família entra só com nome + código: o aparelho ganha um login sem email.
+  async function ensureLogin() {
+    if (user) return null;
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) { console.error(error); return /anonymous/i.test(error.message) ? 'anon_off' : 'net'; }
+    user = data.user;
+    return null;
+  }
   async function findFamily(name, code) {
+    const e0 = await ensureLogin(); if (e0) return { err: e0 };
     const { data, error } = await sb.rpc('find_family', { fname: name.trim(), fcode: code.trim() });
     if (error) return { err: rpcErr(error) };
     return data;
@@ -330,6 +339,7 @@ window.HB = (() => {
     isOwner: () => !!(family && family.owner_member === db.session),
     enablePush, disablePush, refreshPush, pushState,
     email: () => (user && user.email) || '',
+    isAnon: () => !(user && user.email),
     offline: () => isOffline,
     recovery: () => isRecovery,
     onRemoteChange: null,
