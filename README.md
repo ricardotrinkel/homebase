@@ -32,6 +32,8 @@ As regras ficam no banco (não só no app), então valem em qualquer aparelho:
 
 Para gerar novas chaves de notificação: `npx web-push generate-vapid-keys`.
 
+Depois de mudar qualquer variável na Vercel, é preciso publicar de novo (Deployments → ⋯ → Redeploy) para valer.
+
 ## Testes
 
 ```
