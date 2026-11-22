@@ -11,8 +11,8 @@ window.HB = (() => {
   const T = {
     events: {
       get: () => db.events,
-      set: rows => { db.events = rows.map(r => ({ id: r.id, owner: r.owner, by: r.by_person, title: r.title, date: r.date, start: r.start_time, end: r.end_time, repeat: r.repeat, reminder: r.reminder, place: r.place, notes: r.notes, private: r.private })); },
-      to: e => ({ id: e.id, owner: e.owner, by_person: e.by || e.owner, title: e.title, date: e.date, start_time: e.start, end_time: e.end, repeat: e.repeat, reminder: +e.reminder, place: e.place || '', notes: e.notes || '', private: !!e.private }),
+      set: rows => { db.events = rows.map(r => ({ id: r.id, owner: r.owner, by: r.by_person, title: r.title, date: r.date, until: r.until || null, start: r.start_time, end: r.end_time, repeat: r.repeat, reminder: r.reminder, place: r.place, notes: r.notes, private: r.private })); },
+      to: e => ({ id: e.id, owner: e.owner, by_person: e.by || e.owner, title: e.title, date: e.date, until: e.until || null, start_time: e.start, end_time: e.end, repeat: e.repeat, reminder: +e.reminder, place: e.place || '', notes: e.notes || '', private: !!e.private }),
     },
     birthdays: {
       get: () => db.birthdays,

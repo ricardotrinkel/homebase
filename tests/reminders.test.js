@@ -38,3 +38,8 @@ test('texto da notificação em PT e EN', () => {
   assert.deepEqual(message(item, 'pt'), { title: 'Inglês às 15:00', body: '30 min antes · Escola', tag: 'e1-2026-11-23', url: '/?d=2026-11-23' });
   assert.equal(message(item, 'en').title, 'Inglês at 15:00');
 });
+test('repete até: para depois da data final', () => {
+  const e = ev({ repeat: 'weekly', until: '2026-12-07' });
+  assert.equal(dueFor('marina', [e], at('2026-12-07T14:40'), TZ).length, 1);
+  assert.equal(dueFor('marina', [e], at('2026-12-14T14:40'), TZ).length, 0);
+});

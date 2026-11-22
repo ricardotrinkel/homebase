@@ -32,6 +32,7 @@ export function occurs(ev, y, m, d) {
   const [sy, sm, sd] = ev.date.split('-').map(Number);
   const diff = dayNum(y, m, d) - dayNum(sy, sm, sd);
   if (diff < 0) return false;
+  if (ev.until && ev.repeat !== 'none') { const [uy, um, ud] = ev.until.split('-').map(Number); if (dayNum(y, m, d) > dayNum(uy, um, ud)) return false; }
   switch (ev.repeat) {
     case 'none': return diff === 0;
     case 'daily': return true;

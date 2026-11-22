@@ -67,6 +67,8 @@ const EN={
  'Pode escolher várias pessoas de uma vez.':'You can pick several people at once.','Individual':'Individual','aniversário de {n}':'birthday of {n}','O dia é livre.':'',
 };
 Object.assign(EN,{
+ 'Começa em':'Starts on','Repete até':'Repeats until','Ex.: o último dia de aula. Deixe vazio para repetir sempre.':'E.g. the last day of school. Leave empty to repeat forever.',
+ 'A data final precisa ser depois da data de início.':'The end date needs to be after the start date.','até {d}':'until {d}',
  'Pessoas da família':'Family members','Nome':'Name','Adicionar pessoa':'Add person','Admin':'Admin','Pessoa adicionada':'Person added','Digite o nome da pessoa.':'Type the person’s name.',
  'Coloque o nome e a cor de cada um e marque quem é admin. Cada pessoa depois entra com o próprio email e toca no seu nome.':'Add each person’s name and color and mark the admins. Later, each person signs in with their own email and taps their name.',
  'Filho':'Son','Outro':'Other','Todos os filhos':'All kids',
@@ -174,7 +176,7 @@ const canSeeBday=b=>b.vis==='familia'||b.by===me().id||(b.vis==='alguns'&&b.with
 const canEditBday=b=>b.by===me().id||(me().admin&&b.vis==='familia');
 const bdayColor=b=>b.vis==='familia'?C.bdayFam:C.bdayInd;
 
-function occurs(ev,d){const s=parse(ev.date),diff=dayNum(d)-dayNum(s);if(diff<0)return false;
+function occurs(ev,d){const s=parse(ev.date),diff=dayNum(d)-dayNum(s);if(diff<0)return false;if(ev.until&&ev.repeat!=='none'&&dayNum(d)>dayNum(parse(ev.until)))return false;
   switch(ev.repeat){case'none':return diff===0;case'daily':return true;case'weekly':return diff%7===0;case'biweekly':return diff%14===0;case'monthly':return d.getDate()===s.getDate()}return false}
 const famView=()=>me().admin&&st.mode!=='eu';
 const visibleEvents=()=>(famView()?db.events.filter(e=>st.filter.has(e.owner)):db.events.filter(e=>e.owner===me().id||e.owner==='familia')).filter(e=>!hiddenEv(e));
@@ -576,7 +578,7 @@ function openEventDetail(id,dateKey){
    <div class="dhero" style="--c:${o.color};--ct:${textOn(o.color)}"><span style="width:62px;height:62px;display:grid;place-items:center;background:rgba(255,255,255,.4);border-radius:50%;flex:none">${avatar(o,48)}</span><div><div class="eyebrow">${o.id==='familia'?t('Compromisso da família'):t('Compromisso de {n}',{n:o.name})}</div><h2 class="display">${esc(ev.title)}</h2></div></div>
    <dl class="dl">
      <dt>${t('Quando')}</dt><dd>${fmtLong(d)}<br>${ev.start} – ${ev.end}</dd>
-     <dt>${t('Repete')}</dt><dd>${rep(ev.repeat)}${ev.repeat!=='none'?` (${t('desde {d}',{d:parse(ev.date).toLocaleDateString(L().loc)})})`:''}</dd>
+     <dt>${t('Repete')}</dt><dd>${rep(ev.repeat)}${ev.repeat!=='none'?` (${t('desde {d}',{d:parse(ev.date).toLocaleDateString(L().loc)})}${ev.until?` ${t('até {d}',{d:parse(ev.until).toLocaleDateString(L().loc)})}`:''})`:''}</dd>
      <dt>${t('Lembrete')}</dt><dd>${rem(ev.reminder)}</dd>
      ${ev.private?`<dt>${t('Quem vê')}</dt><dd style="display:flex;gap:6px;align-items:center">${I.lock}${t('Só você (privado)')}</dd>`:''}
      ${ev.place?`<dt>${t('Local')}</dt><dd>${esc(ev.place)}</dd>`:''}
@@ -625,11 +627,12 @@ function openEventForm(ev,preset={}){
     </div>
     <label class="switch" for="fPriv"><span><b>${t('Só para mim')}</b><br><small class="note">${t('Fica privado: ninguém mais vê, nem as admins.')}</small></span><input type="checkbox" id="fPriv" ${ev.private?'checked':''}></label>
     <div class="row">
-      <div class="field"><label for="fDate">${t('Data')}</label><input class="input" id="fDate" type="date" value="${ev.date}"></div>
+      <div class="field"><label for="fDate">${ev.repeat!=='none'?t('Começa em'):t('Data')}</label><input class="input" id="fDate" type="date" value="${ev.date}"></div>
       <div class="field"><label for="fStart">${t('Começa')}</label><input class="input" id="fStart" type="time" value="${ev.start}"></div>
       <div class="field"><label for="fEnd">${t('Termina')}</label><input class="input" id="fEnd" type="time" value="${ev.end}"></div>
     </div>
     <div class="field"><span class="flabel">${t('Repetir')}</span><div class="seg" id="fRepeat">${REPEAT_K.map(k=>`<button type="button" data-r="${k}" aria-pressed="${ev.repeat===k}">${rep(k)}</button>`).join('')}</div></div>
+    <div class="field" id="fUntilBox" ${ev.repeat==='none'?'hidden':''}><label for="fUntil">${t('Repete até')}</label><input class="input" id="fUntil" type="date" value="${ev.until||''}"><p class="note" style="margin:4px 0 0">${t('Ex.: o último dia de aula. Deixe vazio para repetir sempre.')}</p></div>
     <div class="field"><label for="fRemind">${t('Notificação')}</label><select class="input" id="fRemind">${REMIND_K.map(k=>`<option value="${k}" ${String(ev.reminder)===k?'selected':''}>${rem(k)}</option>`).join('')}</select></div>
     <div class="field"><label for="fPlace">${t('Local')}</label><input class="input" id="fPlace" value="${esc(ev.place)}" placeholder="${t('Opcional')}"></div>
     <div class="field"><label for="fNotes">${t('Notas')}</label><textarea class="input" id="fNotes" rows="2" placeholder="${t('Opcional')}">${esc(ev.notes)}</textarea></div>
@@ -645,15 +648,17 @@ function openEventForm(ev,preset={}){
       paint()});
     const ad=sh.querySelector('[data-all-d]');ad&&(ad.onclick=()=>{sel=new Set(daughters);paint()});
     if(isNew&&p.admin)sh.querySelector('#fOwner').insertAdjacentHTML('afterend',`<p class="note" style="margin:0">${t('Pode escolher várias pessoas de uma vez.')}</p>`);
-    sh.querySelectorAll('#fRepeat [data-r]').forEach(b=>b.onclick=()=>{repeat=b.dataset.r;sh.querySelectorAll('#fRepeat [data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+    sh.querySelectorAll('#fRepeat [data-r]').forEach(b=>b.onclick=()=>{repeat=b.dataset.r;sh.querySelectorAll('#fRepeat [data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('#fUntilBox').hidden=repeat==='none';sh.querySelector('label[for=fDate]').textContent=repeat==='none'?t('Data'):t('Começa em')});
     sh.querySelector('#evForm').onsubmit=e=>{e.preventDefault();
       const ti=fTitle.value.trim(),s=fStart.value,en=fEnd.value,dt=fDate.value;
       if(!ti)return fErr.textContent=t('Dê um nome ao compromisso.');
       if(!dt||!s||!en)return fErr.textContent=t('Preencha data e horários.');
       if(toMin(en)<=toMin(s))return fErr.textContent=t('O horário de término precisa ser depois do início.');
+      const until=repeat!=='none'&&fUntil.value?fUntil.value:null;
+      if(until&&until<dt)return fErr.textContent=t('A data final precisa ser depois da data de início.');
       const priv=fPriv.checked;if(priv)sel=new Set([p.id]);
       if(!sel.size)return fErr.textContent=t('Escolha de quem é o compromisso.');
-      const base={private:priv,by:priv?p.id:(ev.by||p.id),title:ti,date:dt,start:s,end:en,repeat,reminder:+fRemind.value,place:fPlace.value.trim(),notes:fNotes.value.trim()};
+      const base={private:priv,by:priv?p.id:(ev.by||p.id),title:ti,date:dt,until,start:s,end:en,repeat,reminder:+fRemind.value,place:fPlace.value.trim(),notes:fNotes.value.trim()};
       const own=[...sel];
       if(isNew)own.forEach(o=>db.events.push({id:uid(),owner:o,...base}));else Object.assign(ev,{owner:own[0],...base});
       save();closeSheet();st.cursor=parse(dt);renderApp();toast(isNew?(own.length>1?t('{n} compromissos salvos',{n:own.length}):t('Compromisso salvo')):t('Compromisso atualizado'),colorOf(own[0]),`${ti} · ${rep(repeat)}`);

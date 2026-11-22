@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   const [{ data: subs, error: e1 }, { data: events, error: e2 }] = await Promise.all([
     db.from('push_subscriptions').select('*'),
-    db.from('events').select('id,family_id,owner,by_person,title,date,start_time,repeat,reminder,place,private').gte('reminder', 0),
+    db.from('events').select('id,family_id,owner,by_person,title,date,until,start_time,repeat,reminder,place,private').gte('reminder', 0),
   ]);
   if (e1 || e2) return res.status(500).json({ error: (e1 || e2).message });
 

@@ -58,6 +58,7 @@ create table if not exists public.events (
   by_person  text not null,
   title      text not null,
   date       date not null,
+  until      date,
   start_time text not null check (start_time ~ '^\d{2}:\d{2}$'),
   end_time   text not null check (end_time ~ '^\d{2}:\d{2}$'),
   repeat     text not null default 'none' check (repeat in ('none','daily','weekly','biweekly','monthly')),
@@ -140,6 +141,8 @@ begin
   end loop;
 end $$;
 alter table public.events drop constraint if exists events_owner_check;
+-- "Repete até": data final de um compromisso que se repete (opcional).
+alter table public.events add column if not exists until date;
 delete from public.push_subscriptions where family_id is null;
 
 -- Carimbos automáticos: família, quem criou, datas.
