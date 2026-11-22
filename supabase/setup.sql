@@ -267,9 +267,13 @@ language sql stable security definer set search_path = public as $$
   select (array['flower','square','circle','tri','cloud','penta'])[(select count(*) from public.members where family_id = fid) % 6 + 1]
 $$;
 
-create or replace function public.create_family(fname text, fcode text, my_name text, my_role text, my_color text) returns text
+drop function if exists public.create_family(text,text,text,text,text);
+-- Cria a família já com todas as pessoas: quem cria + as outras (nome, quem é, cor, se é admin).
+create or replace function public.create_family(fname text, fcode text, my_name text, my_role text, my_color text,
+                                                my_admin boolean default true, others jsonb default '[]'::jsonb) returns text
 language plpgsql security definer set search_path = public as $$
-declare fid uuid; mid text;
+declare fid uuid; mid text; o jsonb; n int := 1;
+  shapes text[] := array['flower','square','circle','tri','cloud','penta'];
 begin
   if auth.uid() is null then raise exception 'not_signed_in'; end if;
   if exists (select 1 from members where user_id = auth.uid()) then raise exception 'already_member'; end if;
@@ -278,9 +282,28 @@ begin
     raise exception 'family_exists';
   end if;
   insert into families (name, code) values (trim(fname), trim(fcode)) returning id into fid;
-  insert into members (family_id, user_id, name, role, color, shape, is_admin)
-    values (fid, auth.uid(), trim(my_name), my_role, my_color, 'flower', true) returning id into mid;
+  insert into members (family_id, user_id, name, role, color, shape, is_admin, created_at)
+    values (fid, auth.uid(), trim(my_name), my_role, my_color, shapes[1], coalesce(my_admin, true), now()) returning id into mid;
+  for o in select * from jsonb_array_elements(coalesce(others, '[]'::jsonb)) loop
+    if length(trim(coalesce(o->>'name',''))) > 0 then
+      insert into members (family_id, name, role, color, shape, is_admin, created_at)
+        values (fid, trim(o->>'name'), coalesce(o->>'role','Outro'), o->>'color', shapes[n % 6 + 1],
+                coalesce((o->>'is_admin')::boolean, false), now() + n * interval '1 millisecond');
+      n := n + 1;
+    end if;
+  end loop;
   update families set owner_member = mid where id = fid;
+  return mid;
+end $$;
+
+-- Quem criou a família pode acrescentar mais pessoas depois.
+create or replace function public.add_member(m_name text, m_role text, m_color text, m_admin boolean) returns text
+language plpgsql security definer set search_path = public as $$
+declare mid text; fid uuid := my_family();
+begin
+  if not is_owner() then raise exception 'not_owner'; end if;
+  insert into members (family_id, name, role, color, shape, is_admin)
+    values (fid, trim(m_name), m_role, m_color, next_shape(fid), coalesce(m_admin, false)) returning id into mid;
   return mid;
 end $$;
 
@@ -354,12 +377,14 @@ grant select, insert, update, delete on public.events, public.birthdays, public.
 revoke all on public.reminders_sent from authenticated;
 grant all on all tables in schema public to service_role;
 
-revoke all on function public.create_family(text,text,text,text,text) from public, anon;
+revoke all on function public.create_family(text,text,text,text,text,boolean,jsonb) from public, anon;
+revoke all on function public.add_member(text,text,text,boolean) from public, anon;
 revoke all on function public.find_family(text,text) from public, anon;
 revoke all on function public.join_family(text,text,text,text,text,text) from public, anon;
 revoke all on function public.set_admin(text,boolean) from public, anon;
 revoke all on function public.set_family_code(text) from public, anon;
-grant execute on function public.create_family(text,text,text,text,text) to authenticated;
+grant execute on function public.create_family(text,text,text,text,text,boolean,jsonb) to authenticated;
+grant execute on function public.add_member(text,text,text,boolean) to authenticated;
 grant execute on function public.find_family(text,text) to authenticated;
 grant execute on function public.join_family(text,text,text,text,text,text) to authenticated;
 grant execute on function public.set_admin(text,boolean) to authenticated;

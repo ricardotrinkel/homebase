@@ -167,8 +167,11 @@ window.HB = (() => {
     }
   }
   const rpcErr = e => { const m = (e && e.message) || ''; return (m.match(/family_exists|short_code|not_found|taken|already_member|not_owner/) || ['net'])[0]; };
-  async function createFamily(name, code, myName, role, color) {
-    const { data, error } = await sb.rpc('create_family', { fname: name.trim(), fcode: code.trim(), my_name: myName.trim(), my_role: role, my_color: color });
+  async function createFamily(name, code, me, others) {
+    const { data, error } = await sb.rpc('create_family', {
+      fname: name.trim(), fcode: code.trim(), my_name: me.name.trim(), my_role: me.role, my_color: me.color, my_admin: !!me.admin,
+      others: others.map(p => ({ name: p.name.trim(), role: p.role, color: p.color, is_admin: !!p.admin })),
+    });
     if (error) return { err: rpcErr(error) };
     try { await start(data); } catch (e) { return { err: 'net' }; }
     return { ok: true };
@@ -188,6 +191,12 @@ window.HB = (() => {
     const { error } = await sb.rpc('set_admin', { member_id: id, make_admin: on });
     if (error) return false;
     await loadFamily(); changed();
+    return true;
+  }
+  async function addMember(name, role, color, admin) {
+    const { error } = await sb.rpc('add_member', { m_name: name, m_role: role, m_color: color, m_admin: admin });
+    if (error) return false;
+    await loadFamily(); writeCache();
     return true;
   }
   async function setCode(code) {
@@ -306,7 +315,7 @@ window.HB = (() => {
 
   const api = {
     boot, signIn, signOut, forgot, setPassword, push, flush, setAppIcon,
-    createFamily, findFamily, joinFamily, setAdmin, setCode,
+    createFamily, findFamily, joinFamily, setAdmin, setCode, addMember,
     needsFamily: () => needFamily,
     family: () => family,
     isOwner: () => !!(family && family.owner_member === db.session),
