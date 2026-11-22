@@ -156,6 +156,8 @@ end $$;
 alter table public.events drop constraint if exists events_owner_check;
 -- "Repete até": data final de um compromisso que se repete (opcional).
 alter table public.events add column if not exists until date;
+-- "Viagem": vários dias seguidos (de date até until), com cor própria.
+alter table public.events add column if not exists trip boolean not null default false;
 delete from public.push_subscriptions where family_id is null;
 
 -- Carimbos automáticos: família, quem criou, datas.

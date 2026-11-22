@@ -11,8 +11,8 @@ window.HB = (() => {
   const T = {
     events: {
       get: () => db.events,
-      set: rows => { db.events = rows.map(r => ({ id: r.id, owner: r.owner, by: r.by_person, title: r.title, date: r.date, until: r.until || null, start: r.start_time, end: r.end_time, repeat: r.repeat, reminder: r.reminder, place: r.place, notes: r.notes, private: r.private })); },
-      to: e => ({ id: e.id, owner: e.owner, by_person: e.by || e.owner, title: e.title, date: e.date, until: e.until || null, start_time: e.start, end_time: e.end, repeat: e.repeat, reminder: +e.reminder, place: e.place || '', notes: e.notes || '', private: !!e.private }),
+      set: rows => { db.events = rows.map(r => ({ id: r.id, owner: r.owner, by: r.by_person, title: r.title, date: r.date, until: r.until || null, trip: !!r.trip, start: r.start_time, end: r.end_time, repeat: r.repeat, reminder: r.reminder, place: r.place, notes: r.notes, private: r.private })); },
+      to: e => ({ id: e.id, owner: e.owner, by_person: e.by || e.owner, title: e.title, date: e.date, until: e.until || null, trip: !!e.trip, start_time: e.start, end_time: e.end, repeat: e.repeat, reminder: +e.reminder, place: e.place || '', notes: e.notes || '', private: !!e.private }),
     },
     birthdays: {
       get: () => db.birthdays,
@@ -91,10 +91,13 @@ window.HB = (() => {
         if (!up.length && !del.length) continue;
         try {
           if (up.length) {
-            let { error } = await sb.from(n).upsert(up);
-            // banco ainda sem a coluna "until" (SQL novo não rodado): salva sem ela
-            if (error && n === 'events' && /until/i.test(error.message || '')) {
-              ({ error } = await sb.from(n).upsert(up.map(({ until, ...r }) => r)));
+            let rows = up, { error } = await sb.from(n).upsert(rows);
+            // banco ainda sem uma coluna nova (SQL novo não rodado): salva sem ela
+            for (let i = 0; error && i < 3; i++) {
+              const col = ((error.message || '').match(/'(\w+)' column/) || [])[1];
+              if (!col || !(col in rows[0])) break;
+              rows = rows.map(({ [col]: _, ...r }) => r);
+              ({ error } = await sb.from(n).upsert(rows));
             }
             if (error) throw error;
           }

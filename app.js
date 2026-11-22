@@ -85,6 +85,9 @@ Object.assign(EN,{
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
  'Sair desta conta':'Sign out of this account',
+ 'Viagem':'Trip','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
+ 'Ida':'Leave','Volta':'Return','Nova viagem':'New trip','Editar viagem':'Edit trip','Ex.: Praia, casa da vó':'E.g. beach, grandma’s house','Dê um nome à viagem.':'Give the trip a name.',
+ 'Preencha a ida e a volta.':'Fill in the leave and return dates.','A volta precisa ser depois da ida.':'The return must be after leaving.','Viagem salva':'Trip saved',
  'Quem criou a família':'Whoever created the family','Entrar com email':'Sign in with email','Vai criar uma família? Digite seu email e crie uma senha.':'Creating a family? Type your email and create a password.',
  'Sua família já existe? Entre só com o nome e o código':'Family already exists? Join with just its name and code','Entrar na família':'Join your family',
  'Digite o nome da família e o código que quem criou a família escolheu.':'Type the family name and the code chosen by whoever created it.','Criou a família? Entre com email':'Created the family? Sign in with email',
@@ -139,7 +142,7 @@ function setPeople(rows,resetFilter){
 const FAMILY={id:'familia',name:'Família toda',role:'Todos',color:'#F76F54',shape:'family'};
 const admins=()=>PEOPLE.filter(p=>p.admin).map(p=>p.name).join(LANG==='en'?' and ':' e ');
 const pname=p=>p.id==='familia'?t('Família toda'):p.name;
-const C={bdayFam:'#47B5A8',bdayInd:'#A3C1E2',family:'#F76F54'};
+const C={bdayFam:'#47B5A8',bdayInd:'#A3C1E2',family:'#F76F54',trip:'#8A93E8'};
 const START=6,END=24;
 const REPEAT_K=['none','daily','weekly','biweekly','monthly'];
 const REPEAT_PT={none:'Não repete',daily:'Todo dia',weekly:'Toda semana',biweekly:'A cada 15 dias',monthly:'Todo mês'};
@@ -183,7 +186,7 @@ const canSeeBday=b=>b.vis==='familia'||b.by===me().id||(b.vis==='alguns'&&b.with
 const canEditBday=b=>b.by===me().id||(me().admin&&b.vis==='familia');
 const bdayColor=b=>b.vis==='familia'?C.bdayFam:C.bdayInd;
 
-function occurs(ev,d){const s=parse(ev.date),diff=dayNum(d)-dayNum(s);if(diff<0)return false;if(ev.until&&ev.repeat!=='none'&&dayNum(d)>dayNum(parse(ev.until)))return false;
+function occurs(ev,d){const s=parse(ev.date),diff=dayNum(d)-dayNum(s);if(diff<0)return false;if(ev.trip)return dayNum(d)<=dayNum(parse(ev.until||ev.date));if(ev.until&&ev.repeat!=='none'&&dayNum(d)>dayNum(parse(ev.until)))return false;
   switch(ev.repeat){case'none':return diff===0;case'daily':return true;case'weekly':return diff%7===0;case'biweekly':return diff%14===0;case'monthly':return d.getDate()===s.getDate()}return false}
 const famView=()=>me().admin&&st.mode!=='eu';
 const visibleEvents=()=>(famView()?db.events.filter(e=>st.filter.has(e.owner)):db.events.filter(e=>e.owner===me().id||e.owner==='familia')).filter(e=>!hiddenEv(e));
@@ -199,6 +202,7 @@ const I={
  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
  x:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
  cake:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16v-7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2z"/><path d="M4 15.5c1.5 1.2 3 1.2 4 0s3-1.2 4 0 3 1.2 4 0 2.5-1.2 4 0"/><path d="M12 11V7.5"/><path d="M12 3.5c.9 1 .9 2 0 2.6-.9-.6-.9-1.6 0-2.6z" fill="currentColor"/></svg>',
+ plane:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 13.5 4 11l1.5-1.5 7 1 4-4c.8-.8 2.2-1 3-.2s.6 2.2-.2 3l-4 4 1 7L15 22l-2.5-6.5-3 3V21L8 22l-1-3-3-1 1.5-1.5h2.5z"/></svg>',
  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',
  day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3.5" width="14" height="17" rx="4"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
  week:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M9 4v16M15 4v16"/></svg>',
@@ -436,6 +440,7 @@ function sideHTML(){
     <span style="--c:${C.family}"><i></i>${t('Compromissos da família')}</span>
     <span style="--c:${C.bdayFam}"><i></i>${t('Aniversário (família toda)')}</span>
     <span style="--c:${C.bdayInd}"><i></i>${t('Aniversário (individual)')}</span>
+    <span style="--c:${C.trip}"><i></i>${t('Viagem')}</span>
   </div></div>
   <div class="panel"><h3 class="eyebrow">${t('Próximos aniversários')}</h3>${bdListHTML()}</div>`;
 }
@@ -500,22 +505,26 @@ function stage(word,rest,board){
    <div class="asters">${who.map(x=>`<span>${aster(x.color)}${x.id==='familia'?t('Família'):x.name}</span>`).join('')}</div></div>`;
 }
 const cakesHTML=d=>{const b=bdaysOn(d);return b.length?`<div class="cakes">${b.map(x=>`<button class="cake" data-bday="${x.id}" style="--c:${bdayColor(x)}" title="${esc(t('Aniversário: {n}',{n:x.name}))}">${I.cake}</button>`).join('')}</div>`:''};
+const tripsOn=(d,list)=>eventsOn(d,list).filter(e=>e.trip);
+const tripLbl=e=>`${esc(e.title)}${e.owner==='familia'?'':' · '+esc(pname(person(e.owner)||FAMILY))}`;
+const tripChips=(d,list,cls='bchip')=>tripsOn(d,list).map(e=>`<button class="${cls}" data-ev="${e.id}" data-date="${key(d)}" style="--c:${C.trip}" title="${tripLbl(e)}">${sz(I.plane,cls==='bchip'?18:12)}<span>${tripLbl(e)}</span></button>`).join('');
 function weekHTML(){
   const s=startOfWeek(st.cursor),T=today(),list=visibleEvents();
-  const cols=[...Array(7)].map((_,i)=>{const d=addDays(s,i);return{date:d,goday:1,today:sameDay(d,T),items:eventsOn(d,list),head:`<span class="dn">${L().wd[d.getDay()]}</span><span class="dd">${d.getDate()}</span>${cakesHTML(d)}`}});
+  const cols=[...Array(7)].map((_,i)=>{const d=addDays(s,i);return{date:d,goday:1,today:sameDay(d,T),items:eventsOn(d,list).filter(e=>!e.trip),head:`<span class="dn">${L().wd[d.getDay()]}</span><span class="dd">${d.getDate()}</span>${cakesHTML(d)}${tripsOn(d,list).length?`<span class="trips">${tripChips(d,list,'tripchip')}</span>`:''}`}});
   const e=addDays(s,6),ms=L().ms;
   const rng=s.getMonth()===e.getMonth()?`${s.getDate()}–${e.getDate()} ${ms[e.getMonth()].toLowerCase()}`:`${s.getDate()} ${ms[s.getMonth()].toLowerCase()} – ${e.getDate()} ${ms[e.getMonth()].toLowerCase()}`;
   return stage(t('Semana'),rng,boardHTML(cols,famView()?118:96));
 }
 function dayHTML(){
   const d=st.cursor,T=today(),list=visibleEvents(),b=bdaysOn(d);
-  const banner=b.length?`<div class="banner" style="margin-bottom:12px">${b.map(x=>`<button class="bchip" data-bday="${x.id}" style="--c:${bdayColor(x)}">${sz(I.cake,18)}${esc(t('Aniversário de {n}',{n:x.name}))}</button>`).join('')}</div>`:'';
+  const tr=tripChips(d,list);
+  const banner=b.length||tr?`<div class="banner" style="margin-bottom:12px">${tr}${b.map(x=>`<button class="bchip" data-bday="${x.id}" style="--c:${bdayColor(x)}">${sz(I.cake,18)}${esc(t('Aniversário de {n}',{n:x.name}))}</button>`).join('')}</div>`:'';
   let cols;
   if(famView()&&st.byPerson){
     const owners=[...PEOPLE,FAMILY].filter(x=>st.filter.has(x.id));
-    cols=owners.map(o=>({date:d,owner:o.id,today:sameDay(d,T),items:eventsOn(d,list).filter(e=>e.owner===o.id),head:`<span class="who-h">${avatar(o,26)}${o.id==='familia'?t('Família'):o.name}</span>`}));
+    cols=owners.map(o=>({date:d,owner:o.id,today:sameDay(d,T),items:eventsOn(d,list).filter(e=>e.owner===o.id&&!e.trip),head:`<span class="who-h">${avatar(o,26)}${o.id==='familia'?t('Família'):o.name}</span>`}));
     if(!cols.length)return banner+`<p class="note">${t('Escolha pelo menos uma pessoa nos filtros acima.')}</p>`;
-  }else cols=[{date:d,today:sameDay(d,T),items:eventsOn(d,list),head:`<span class="dn">${L().wd[d.getDay()]}</span><span class="dd">${d.getDate()}</span>`}];
+  }else cols=[{date:d,today:sameDay(d,T),items:eventsOn(d,list).filter(e=>!e.trip),head:`<span class="dn">${L().wd[d.getDay()]}</span><span class="dd">${d.getDate()}</span>`}];
   return banner+stage(t('Dia'),dm(d.getDate(),d.getMonth()),boardHTML(cols,cols.length>1?130:240));
 }
 
@@ -556,7 +565,7 @@ function yearHTML(){
     for(let i=0;i<first.getDay();i++)html+='<span></span>';
     for(let dd=1;dd<=days;dd++){const d=new Date(y,m,dd),bd=bdaysOn(d),evs=eventsOn(d,list);
       const cls=['dbtn'];if(bd.length)cls.push('bday');if(sameDay(d,T))cls.push('today');
-      const dots=evs.length?`<span class="dots">${[...new Set(evs.map(e=>e.owner))].slice(0,3).map(o=>`<i style="--c:${colorOf(o)}"></i>`).join('')}</span>`:'';
+      const dots=evs.length?`<span class="dots">${[...new Set(evs.map(e=>e.trip?'#trip':e.owner))].slice(0,3).map(o=>`<i style="--c:${o==='#trip'?C.trip:colorOf(o)}"></i>`).join('')}</span>`:'';
       const lbl=[dm(dd,m),...bd.map(b=>t('Aniversário de {n}',{n:b.name})),evs.length?t('{n} compromisso(s)',{n:evs.length}):''].filter(Boolean).join(', ');
       html+=`<button class="${cls.join(' ')}" data-yday="${key(d)}" style="${bd.length?bdayDayStyle(bd):''}" aria-label="${esc(lbl)}">${dd}${dots}${bd.length>1?`<span class="cnt">${bd.length}</span>`:''}</button>`}
     html+='</div></div>'}
@@ -580,17 +589,19 @@ function openNewChooser(){
   openSheet(`${sheetHead(t('Adicionar'),t('O que vamos marcar?'))}
    <div class="choose">
      <button data-act="newEvent" style="--c:${C.family}">${I.cal}<b>${t('Compromisso')}</b><span>${t('Com horário, repetição e lembrete.')}</span></button>
+     <button data-act="newTrip" style="--c:${C.trip}">${I.plane}<b>${t('Viagem')}</b><span>${t('Vários dias seguidos, da ida até a volta.')}</span></button>
      <button data-act="newBday" style="--c:${C.bdayFam}">${I.cake}<b>${t('Aniversário')}</b><span>${t('Escolha quem pode ver.')}</span></button>
    </div>`);
 }
+const tripRange=e=>`${parse(e.date).toLocaleDateString(L().loc,{day:'numeric',month:'short'})} – ${parse(e.until||e.date).toLocaleDateString(L().loc,{day:'numeric',month:'short'})}`;
 function openEventDetail(id,dateKey){
   const ev=db.events.find(e=>e.id===id);if(!ev)return;const o=person(ev.owner),d=dateKey?parse(dateKey):parse(ev.date);
-  const can=canEditEvent(ev);
+  const can=canEditEvent(ev),hc=ev.trip?C.trip:o.color;
   openSheet(`<div class="shead"><div class="grow"></div>${closeBtn()}</div>
-   <div class="dhero" style="--c:${o.color};--ct:${textOn(o.color)}"><span style="width:62px;height:62px;display:grid;place-items:center;background:rgba(255,255,255,.4);border-radius:50%;flex:none">${avatar(o,48)}</span><div><div class="eyebrow">${o.id==='familia'?t('Compromisso da família'):t('Compromisso de {n}',{n:o.name})}</div><h2 class="display">${esc(ev.title)}</h2></div></div>
+   <div class="dhero" style="--c:${hc};--ct:${textOn(hc)}"><span style="width:62px;height:62px;display:grid;place-items:center;background:rgba(255,255,255,.4);border-radius:50%;flex:none">${avatar(o,48)}</span><div><div class="eyebrow">${ev.trip?(o.id==='familia'?t('Viagem da família'):t('Viagem de {n}',{n:o.name})):o.id==='familia'?t('Compromisso da família'):t('Compromisso de {n}',{n:o.name})}</div><h2 class="display">${esc(ev.title)}</h2></div></div>
    <dl class="dl">
-     <dt>${t('Quando')}</dt><dd>${fmtLong(d)}<br>${ev.start} – ${ev.end}</dd>
-     <dt>${t('Repete')}</dt><dd>${rep(ev.repeat)}${ev.repeat!=='none'?` (${t('desde {d}',{d:parse(ev.date).toLocaleDateString(L().loc)})}${ev.until?` ${t('até {d}',{d:parse(ev.until).toLocaleDateString(L().loc)})}`:''})`:''}</dd>
+     ${ev.trip?`<dt>${t('Quando')}</dt><dd>${t('Ida')}: ${fmtLong(parse(ev.date))}<br>${t('Volta')}: ${fmtLong(parse(ev.until||ev.date))}</dd>`:`<dt>${t('Quando')}</dt><dd>${fmtLong(d)}<br>${ev.start} – ${ev.end}</dd>
+     <dt>${t('Repete')}</dt><dd>${rep(ev.repeat)}${ev.repeat!=='none'?` (${t('desde {d}',{d:parse(ev.date).toLocaleDateString(L().loc)})}${ev.until?` ${t('até {d}',{d:parse(ev.until).toLocaleDateString(L().loc)})}`:''})`:''}</dd>`}
      <dt>${t('Lembrete')}</dt><dd>${rem(ev.reminder)}</dd>
      ${ev.private?`<dt>${t('Quem vê')}</dt><dd style="display:flex;gap:6px;align-items:center">${I.lock}${t('Só você (privado)')}</dd>`:''}
      ${ev.place?`<dt>${t('Local')}</dt><dd>${esc(ev.place)}</dd>`:''}
@@ -620,7 +631,7 @@ function openDaySheet(k){
   openSheet(`${sheetHead(L().wd[d.getDay()],dm(d.getDate(),d.getMonth()))}
    <div class="list">
     ${bd.map(b=>`<button class="litem" data-bday="${b.id}" style="--c:${bdayColor(b)}"><i class="bar"></i><span><b>${esc(t('Aniversário de {n}',{n:b.name}))}</b><small>${b.vis==='familia'?t('Família toda'):t('Individual')}</small></span></button>`).join('')}
-    ${evs.map(e=>`<button class="litem" data-ev="${e.id}" data-date="${k}" style="--c:${colorOf(e.owner)}"><i class="bar"></i><span><b>${esc(e.title)}</b><small>${e.start}–${e.end} · ${esc(pname(person(e.owner)))}</small></span></button>`).join('')}
+    ${evs.map(e=>`<button class="litem" data-ev="${e.id}" data-date="${k}" style="--c:${e.trip?C.trip:colorOf(e.owner)}"><i class="bar"></i><span><b>${esc(e.title)}</b><small>${e.trip?`${t('Viagem')} · ${tripRange(e)}`:`${e.start}–${e.end}`} · ${esc(pname(person(e.owner)))}</small></span></button>`).join('')}
     ${!bd.length&&!evs.length?`<p class="note">${t('Nada marcado neste dia.')}</p>`:''}
    </div>
    <div class="actions"><button class="btn ghost" data-act="newEvent" data-preset-date="${k}">${t('Novo compromisso')}</button><button class="btn primary" data-goday="${k}">${t('Abrir o dia')}</button></div>`);
@@ -628,23 +639,27 @@ function openDaySheet(k){
 
 function openEventForm(ev,preset={}){
   const p=me(),isNew=!ev;
-  ev=ev||{owner:preset.owner||p.id,title:'',date:preset.date||key(st.cursor),start:preset.start||'09:00',end:preset.end||'10:00',repeat:'none',reminder:30,place:'',notes:''};
+  ev=ev||{owner:preset.owner||p.id,title:'',date:preset.date||key(st.cursor),start:preset.start||'09:00',end:preset.end||'10:00',repeat:'none',reminder:preset.trip?1440:30,place:'',notes:'',trip:!!preset.trip};
+  const trip=!!ev.trip;
   const owners=p.admin?[...PEOPLE,FAMILY]:[p];const kids=PEOPLE.filter(x=>x.role==='Filha'||x.role==='Filho'),daughters=kids.map(x=>x.id),kidsLabel=kids.every(x=>x.role==='Filha')?'Todas as filhas':'Todos os filhos';
-  openSheet(`${sheetHead(isNew?t('Novo compromisso'):t('Editar compromisso'),isNew?t('Marcar na agenda'):esc(ev.title))}
+  openSheet(`${sheetHead(trip?(isNew?t('Nova viagem'):t('Editar viagem')):isNew?t('Novo compromisso'):t('Editar compromisso'),isNew?t('Marcar na agenda'):esc(ev.title))}
    <form id="evForm" class="list" style="gap:14px" novalidate>
-    <div class="field"><label for="fTitle">${t('O que é')}</label><input class="input" id="fTitle" value="${esc(ev.title)}" placeholder="${t('Ex.: Dentista, aula de inglês')}"></div>
+    <div class="field"><label for="fTitle">${t('O que é')}</label><input class="input" id="fTitle" value="${esc(ev.title)}" placeholder="${trip?t('Ex.: Praia, casa da vó'):t('Ex.: Dentista, aula de inglês')}"></div>
     <div class="field"><span class="flabel">${t('De quem')}</span>
       ${p.admin?`<div class="chips" style="flex-wrap:wrap" id="fOwner">${isNew&&kids.length>1?`<button type="button" class="chip plain" data-all-d="1" aria-pressed="false" style="--c:var(--fg);--ct:var(--bg)">${t(kidsLabel)}</button>`:''}${owners.map(o=>`<button type="button" class="chip" data-o="${o.id}" aria-pressed="${ev.owner===o.id}" style="--c:${o.color};--ct:${textOn(o.color)}">${avatar(o,22)}${esc(pname(o))}</button>`).join('')}</div>`
        :`<div class="chips"><span class="chip" aria-pressed="true" style="--c:${p.color};--ct:${textOn(p.color)}">${avatar(p,22)}${p.name}</span></div><p class="note" style="margin:0">${t('Você adiciona no seu horário. Compromissos da família toda são marcados pelas admins ({a}).',{a:admins()})}</p>`}
     </div>
     <label class="switch" for="fPriv"><span><b>${t('Só para mim')}</b><br><small class="note">${t('Fica privado: ninguém mais vê, nem as admins.')}</small></span><input type="checkbox" id="fPriv" ${ev.private?'checked':''}></label>
-    <div class="row">
+    ${trip?`<div class="row">
+      <div class="field"><label for="fDate">${t('Ida')}</label><input class="input" id="fDate" type="date" value="${ev.date}"></div>
+      <div class="field"><label for="fUntil">${t('Volta')}</label><input class="input" id="fUntil" type="date" value="${ev.until||ev.date}"></div>
+    </div>`:`<div class="row">
       <div class="field"><label for="fDate">${ev.repeat!=='none'?t('Começa em'):t('Data')}</label><input class="input" id="fDate" type="date" value="${ev.date}"></div>
       <div class="field"><label for="fStart">${t('Começa')}</label><input class="input" id="fStart" type="time" value="${ev.start}"></div>
       <div class="field"><label for="fEnd">${t('Termina')}</label><input class="input" id="fEnd" type="time" value="${ev.end}"></div>
     </div>
     <div class="field"><span class="flabel">${t('Repetir')}</span><div class="seg" id="fRepeat">${REPEAT_K.map(k=>`<button type="button" data-r="${k}" aria-pressed="${ev.repeat===k}">${rep(k)}</button>`).join('')}</div></div>
-    <div class="field" id="fUntilBox" ${ev.repeat==='none'?'hidden':''}><label for="fUntil">${t('Repete até')}</label><input class="input" id="fUntil" type="date" value="${ev.until||''}"><p class="note" style="margin:4px 0 0">${t('Ex.: o último dia de aula. Deixe vazio para repetir sempre.')}</p></div>
+    <div class="field" id="fUntilBox" ${ev.repeat==='none'?'hidden':''}><label for="fUntil">${t('Repete até')}</label><input class="input" id="fUntil" type="date" value="${ev.until||''}"><p class="note" style="margin:4px 0 0">${t('Ex.: o último dia de aula. Deixe vazio para repetir sempre.')}</p></div>`}
     <div class="field"><label for="fRemind">${t('Notificação')}</label><select class="input" id="fRemind">${REMIND_K.map(k=>`<option value="${k}" ${String(ev.reminder)===k?'selected':''}>${rem(k)}</option>`).join('')}</select></div>
     <div class="field"><label for="fPlace">${t('Local')}</label><input class="input" id="fPlace" value="${esc(ev.place)}" placeholder="${t('Opcional')}"></div>
     <div class="field"><label for="fNotes">${t('Notas')}</label><textarea class="input" id="fNotes" rows="2" placeholder="${t('Opcional')}">${esc(ev.notes)}</textarea></div>
@@ -660,20 +675,22 @@ function openEventForm(ev,preset={}){
       paint()});
     const ad=sh.querySelector('[data-all-d]');ad&&(ad.onclick=()=>{sel=new Set(daughters);paint()});
     if(isNew&&p.admin)sh.querySelector('#fOwner').insertAdjacentHTML('afterend',`<p class="note" style="margin:0">${t('Pode escolher várias pessoas de uma vez.')}</p>`);
-    sh.querySelectorAll('#fRepeat [data-r]').forEach(b=>b.onclick=()=>{repeat=b.dataset.r;sh.querySelectorAll('#fRepeat [data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('#fUntilBox').hidden=repeat==='none';sh.querySelector('label[for=fDate]').textContent=repeat==='none'?t('Data'):t('Começa em')});
+    if(!trip)sh.querySelectorAll('#fRepeat [data-r]').forEach(b=>b.onclick=()=>{repeat=b.dataset.r;sh.querySelectorAll('#fRepeat [data-r]').forEach(x=>x.setAttribute('aria-pressed',x===b));sh.querySelector('#fUntilBox').hidden=repeat==='none';sh.querySelector('label[for=fDate]').textContent=repeat==='none'?t('Data'):t('Começa em')});
     sh.querySelector('#evForm').onsubmit=e=>{e.preventDefault();
-      const ti=fTitle.value.trim(),s=fStart.value,en=fEnd.value,dt=fDate.value;
-      if(!ti)return fErr.textContent=t('Dê um nome ao compromisso.');
+      const ti=fTitle.value.trim(),dt=fDate.value;
+      if(!ti)return fErr.textContent=t(trip?'Dê um nome à viagem.':'Dê um nome ao compromisso.');
+      if(trip){if(!dt||!fUntil.value)return fErr.textContent=t('Preencha a ida e a volta.');if(fUntil.value<dt)return fErr.textContent=t('A volta precisa ser depois da ida.')}
+      const s=trip?'08:00':fStart.value,en=trip?'20:00':fEnd.value;
       if(!dt||!s||!en)return fErr.textContent=t('Preencha data e horários.');
       if(toMin(en)<=toMin(s))return fErr.textContent=t('O horário de término precisa ser depois do início.');
-      const until=repeat!=='none'&&fUntil.value?fUntil.value:null;
+      const until=trip?fUntil.value:repeat!=='none'&&fUntil.value?fUntil.value:null;
       if(until&&until<dt)return fErr.textContent=t('A data final precisa ser depois da data de início.');
       const priv=fPriv.checked;if(priv)sel=new Set([p.id]);
       if(!sel.size)return fErr.textContent=t('Escolha de quem é o compromisso.');
-      const base={private:priv,by:priv?p.id:(ev.by||p.id),title:ti,date:dt,until,start:s,end:en,repeat,reminder:+fRemind.value,place:fPlace.value.trim(),notes:fNotes.value.trim()};
+      const base={private:priv,by:priv?p.id:(ev.by||p.id),title:ti,date:dt,until,start:s,end:en,repeat:trip?'none':repeat,trip,reminder:+fRemind.value,place:fPlace.value.trim(),notes:fNotes.value.trim()};
       const own=[...sel];
       if(isNew)own.forEach(o=>db.events.push({id:uid(),owner:o,...base}));else Object.assign(ev,{owner:own[0],...base});
-      save();closeSheet();st.cursor=parse(dt);renderApp();toast(isNew?(own.length>1?t('{n} compromissos salvos',{n:own.length}):t('Compromisso salvo')):t('Compromisso atualizado'),colorOf(own[0]),`${ti} · ${rep(repeat)}`);
+      save();closeSheet();st.cursor=parse(dt);renderApp();toast(trip?t('Viagem salva'):isNew?(own.length>1?t('{n} compromissos salvos',{n:own.length}):t('Compromisso salvo')):t('Compromisso atualizado'),trip?C.trip:colorOf(own[0]),trip?`${ti} · ${tripRange(base)}`:`${ti} · ${rep(repeat)}`);
     };
   });
 }
@@ -869,6 +886,7 @@ document.addEventListener('click',e=>{
     case'pushOn':HB.enablePush().then(r=>{if(r==='ok'){toast(t('Notificações ativadas'),'#47B5A8');closeSheet();renderApp()}else openBell()});break;
     case'brand':openBrand();break;
     case'newEvent':openEventForm(null,act.dataset.presetDate?{date:act.dataset.presetDate}:{});break;
+    case'newTrip':openEventForm(null,{trip:true});break;
     case'newBday':openBdayForm();break;
     case'bell':openBell();break;
     case'settings':openSettings();break;
