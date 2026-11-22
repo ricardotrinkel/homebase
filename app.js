@@ -142,7 +142,7 @@ function setPeople(rows,resetFilter){
 const FAMILY={id:'familia',name:'Família toda',role:'Todos',color:'#F76F54',shape:'family'};
 const admins=()=>PEOPLE.filter(p=>p.admin).map(p=>p.name).join(LANG==='en'?' and ':' e ');
 const pname=p=>p.id==='familia'?t('Família toda'):p.name;
-const C={bdayFam:'#47B5A8',bdayInd:'#A3C1E2',family:'#F76F54',trip:'#8A93E8'};
+const C={bdayFam:'#47B5A8',bdayInd:'#A3C1E2',family:'#F76F54',trip:'#4F86D9'};
 const START=6,END=24;
 const REPEAT_K=['none','daily','weekly','biweekly','monthly'];
 const REPEAT_PT={none:'Não repete',daily:'Todo dia',weekly:'Toda semana',biweekly:'A cada 15 dias',monthly:'Todo mês'};
