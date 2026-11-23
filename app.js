@@ -85,7 +85,7 @@ Object.assign(EN,{
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
  'Sair desta conta':'Sign out of this account',
- 'Viagem':'Trip','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
+ 'Viagem':'Trip','Como entrar':'How to sign in','Criei a família':'I created the family','Essa pessoa entra com email. Toque em “Criei a família” lá em cima.':'This person signs in with email. Tap “I created the family” at the top.','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
  'Ida':'Leave','Volta':'Return','Nova viagem':'New trip','Editar viagem':'Edit trip','Ex.: Praia, casa da vó':'E.g. beach, grandma’s house','Dê um nome à viagem.':'Give the trip a name.',
  'Preencha a ida e a volta.':'Fill in the leave and return dates.','A volta precisa ser depois da ida.':'The return must be after leaving.','Viagem salva':'Trip saved',
  'Quem criou a família':'Whoever created the family','Entrar com email':'Sign in with email','Vai criar uma família? Digite seu email e crie uma senha.':'Creating a family? Type your email and create a password.',
@@ -226,6 +226,7 @@ function avatar(p,size=40){
    :`<ellipse cx="24.5" cy="${ey}" rx="5.6" ry="6.6" fill="#fff"/><ellipse cx="39.5" cy="${ey}" rx="5.6" ry="6.6" fill="#fff"/><circle cx="25.8" cy="${ey+1.2}" r="2.9" fill="#1E2438"/><circle cx="40.8" cy="${ey+1.2}" r="2.9" fill="#1E2438"/>`;
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" style="flex:none;overflow:visible">${body}${eyes}</svg>`;
 }
+const modeToggle=m=>`<div class="lang lmode" role="group" aria-label="${t('Como entrar')}"><button type="button" data-lmode="code" aria-pressed="${m==='code'}">${t('Entrar na família')}</button><button type="button" data-lmode="email" aria-pressed="${m==='email'}">${t('Criei a família')}</button></div>`;
 const langToggle=()=>`<div class="lang" role="group" aria-label="Idioma / Language"><button type="button" data-lang="pt" aria-pressed="${LANG==='pt'}">PT</button><button type="button" data-lang="en" aria-pressed="${LANG==='en'}">EN</button></div>`;
 
 /* ================= App icons ================= */
@@ -285,16 +286,15 @@ function renderLogin(){
   </section>
   <section class="lg-form gut">
     <form class="lg-card" id="lgForm" novalidate>
+      ${modeToggle('email')}
       <div class="lg-top"><div><div class="eyebrow">${t('Quem criou a família')}</div><h2 class="display">${t('Entrar com email')}</h2></div>${langToggle()}</div>
       <div class="field"><label for="lgEmail">${t('Email')}</label><input class="input" id="lgEmail" type="email" autocomplete="email" placeholder="voce@email.com"></div>
       <div class="field"><label for="lgPass">${t('Senha')}</label><input class="input" id="lgPass" type="password" autocomplete="current-password" placeholder="${t('Mínimo de 6 caracteres')}"></div>
       <div class="err" id="lgErr" role="alert"></div>
       <button class="btn primary" type="submit">${t('Entrar')}</button>
       <p class="note" style="color:#AEB5CA;margin:0">${t('Vai criar uma família? Digite seu email e crie uma senha.')} <button type="button" class="linkish" id="lgForgot">${t('Esqueci a senha')}</button></p>
-      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="lgCode">${t('Sua família já existe? Entre só com o nome e o código')}</button></p>
     </form>
   </section>`;
-  el.querySelector('#lgCode').onclick=()=>{loginMode='code';famState=newFam();famState.tab='join';route()};
   el.querySelector('#lgForgot').onclick=async()=>{const em=lgEmail.value.trim().toLowerCase();
     if(!/^\S+@\S+\.\S+$/.test(em))return lgErr.textContent=t('Digite seu email acima e toque de novo em “Esqueci a senha”.');
     lgErr.textContent='';const ok=await HB.forgot(em);toast(ok?t('Enviamos um link para criar uma senha nova.'):t('Não deu para entrar agora. Verifique a internet e tente de novo.'),'#F7E289',ok?em:'')};
@@ -367,11 +367,12 @@ function renderFamily(){
   </section>
   <section class="lg-form gut">
     <form class="lg-card" id="famForm" novalidate>
+      ${codeMode?modeToggle('code'):''}
       <div class="lg-top"><div><div class="eyebrow">${codeMode?t('Entrar na família'):esc(HB.email())}</div><h2 class="display">${codeMode?t('Oi! Quem está aí?'):t('Sua família')}</h2></div>${langToggle()}</div>
       ${codeMode?`<p class="note" style="margin:0">${t('Digite o nome da família e o código que quem criou a família escolheu.')}</p>`:''}
       <div class="seg" id="famTabs" ${codeMode?'hidden':''}><button type="button" data-ftab="create" aria-pressed="${F.tab==='create'}">${t('Criar família')}</button><button type="button" data-ftab="join" aria-pressed="${F.tab==='join'}">${t('Entrar numa família')}</button></div>
       ${body}
-      <p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="famOut">${codeMode?t('Criou a família? Entre com email'):t('Sair desta conta')}</button></p>
+      ${codeMode?'':`<p class="note" style="color:#AEB5CA;margin:0"><button type="button" class="linkish" id="famOut">${t('Sair desta conta')}</button></p>`}
     </form>
   </section>`;
   const keep=()=>{const g=id=>el.querySelector('#'+id);if(g('fName'))F.name=g('fName').value;if(g('fCode'))F.code=g('fCode').value;if(g('fMe'))F.myName=g('fMe').value;
@@ -383,10 +384,10 @@ function renderFamily(){
   el.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>{F.role=b.dataset.role;el.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   el.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{F.color=b.dataset.color;el.querySelectorAll('[data-color]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   el.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{keep();F.claim=b.dataset.claim;renderFamily()});
-  el.querySelector('#famOut').onclick=()=>{famState=newFam();loginMode='email';HB.signOut().then(route)};
+  const fo=el.querySelector('#famOut');if(fo)fo.onclick=()=>{famState=newFam();loginMode='email';HB.signOut().then(route)};
   el.querySelector('#famForm').onsubmit=async e=>{e.preventDefault();keep();const err=el.querySelector('#fErr'),btn=e.target.querySelector('[type=submit]');
     const ERR={family_exists:'Já existe uma família com esse nome e código. Escolha outro código.',short_code:'O código precisa ter pelo menos 6 letras ou números.',
-      not_found:'Não achamos essa família. Confira o nome e o código.',taken:'Essa pessoa entra com email. Use “Criou a família? Entre com email”.',
+      not_found:'Não achamos essa família. Confira o nome e o código.',taken:'Essa pessoa entra com email. Toque em “Criei a família” lá em cima.',
       needs_email:'Para criar uma família, entre com email.',no_name:'Digite seu nome.',anon_off:'O login só com código ainda não foi ligado no Supabase.'};
     const fail=k=>{btn.disabled=false;err.textContent=t(ERR[k]||'Não deu para entrar agora. Verifique a internet e tente de novo.')};
     if(!(F.name||'').trim())return err.textContent=t('Digite o nome da família.');
@@ -855,6 +856,7 @@ document.addEventListener('click',e=>{
   const ic=tg.closest('[data-icon]');if(ic){db.prefs.appIcon=+ic.dataset.icon;HB.setAppIcon(db.prefs.appIcon);renderApp();openBrand();toast(t('Ícone trocado'),'#F76F54');return}
   const lc=tg.closest('[data-lidel],[data-liclear]');if(lc){if(lc.dataset.lidel){const[l,id]=lc.dataset.lidel.split('|');const arr=listRef(l);arr.splice(arr.findIndex(x=>x.id===id),1)}else{const arr=listRef(lc.dataset.liclear);for(let i=arr.length-1;i>=0;i--)if(arr[i].done)arr.splice(i,1)}save();renderContent();return}
   if(tg.classList.contains('overlay')||tg.closest('.close,.btn[data-close]')){closeSheet();return}
+  const lm=tg.closest('[data-lmode]');if(lm){if(lm.dataset.lmode!==loginMode){loginMode=lm.dataset.lmode;famState=newFam();if(loginMode==='code')famState.tab='join';if(HB.isAnon()&&HB.email()===''&&loginMode==='email'){HB.signOut().then(route);return}route()}return}
   const lg=tg.closest('[data-lang]');if(lg){LANG=db.prefs.lang=lg.dataset.lang;save();HB.refreshPush();if(modal.innerHTML)closeSheet();route();return}
   const a=tg.closest('[data-view]');if(a&&a.closest('#app')){st.view=a.dataset.view;renderApp();return}
   const nav=tg.closest('[data-nav]');if(nav){const n=+nav.dataset.nav,c=st.cursor;
