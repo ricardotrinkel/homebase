@@ -85,7 +85,7 @@ Object.assign(EN,{
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
  'Sair desta conta':'Sign out of this account',
- 'Viagem':'Trip','Como entrar':'How to sign in','Criei a família':'I created the family','Essa pessoa entra com email. Toque em “Criei a família” lá em cima.':'This person signs in with email. Tap “I created the family” at the top.','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
+ 'Viagem':'Trip','Quem criou a família entra com email':'Whoever created the family signs in with email','entra com email':'signs in with email','Como entrar':'How to sign in','Criei a família':'I created the family','Essa pessoa entra com email. Toque em “Criei a família” lá em cima.':'This person signs in with email. Tap “I created the family” at the top.','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
  'Ida':'Leave','Volta':'Return','Nova viagem':'New trip','Editar viagem':'Edit trip','Ex.: Praia, casa da vó':'E.g. beach, grandma’s house','Dê um nome à viagem.':'Give the trip a name.',
  'Preencha a ida e a volta.':'Fill in the leave and return dates.','A volta precisa ser depois da ida.':'The return must be after leaving.','Viagem salva':'Trip saved',
  'Quem criou a família':'Whoever created the family','Entrar com email':'Sign in with email','Vai criar uma família? Digite seu email e crie uma senha.':'Creating a family? Type your email and create a password.',
@@ -354,7 +354,7 @@ function renderFamily(){
     const ppl=F.found.people;
     body=`<div class="field"><span class="flabel">${t('Quem é você?')}</span>
         <p class="note" style="margin:0 0 6px">${t('Toque no seu nome ou crie um novo. Pode usar em quantos aparelhos quiser.')}</p>
-        <div class="who" role="group">${ppl.map(p=>`<button type="button" data-claim="${esc(p.id)}" aria-pressed="${F.claim===p.id}" style="--c:${p.color}">${avatar(p,44)}<b>${esc(p.name)}</b><small>${t(p.role)}</small></button>`).join('')}
+        <div class="who" role="group">${ppl.map(p=>p.owner?`<button type="button" data-lmode="email" style="--c:${p.color}" title="${t('Quem criou a família entra com email')}">${avatar(p,44)}<b>${esc(p.name)}</b><small>${t('entra com email')}</small></button>`:`<button type="button" data-claim="${esc(p.id)}" aria-pressed="${F.claim===p.id}" style="--c:${p.color}">${avatar(p,44)}<b>${esc(p.name)}</b><small>${t(p.role)}</small></button>`).join('')}
         <button type="button" data-claim="" aria-pressed="${F.claim===''}" style="--c:#F6EFE4">${sz(I.plus,40)}<b>${t('Sou nova(o) aqui')}</b><small>&nbsp;</small></button></div></div>
       ${F.claim===''?meFields:''}
       <div class="err" id="fErr" role="alert"></div><button class="btn primary" type="submit" ${F.claim==null?'disabled':''}>${t('Entrar na família')}</button>`;
@@ -397,7 +397,7 @@ function renderFamily(){
     btn.disabled=true;err.textContent='';
     let r;
     if(F.tab==='create')r=await HB.createFamily(F.name,F.code,F.people[0],F.people.slice(1).filter(p=>p.name.trim()));
-    else if(!F.found){const f=await HB.findFamily(F.name,F.code);btn.disabled=false;if(!f||f.err)return fail(f?f.err:'not_found');F.found=f;F.claim=f.people.length?null:'';return renderFamily()}
+    else if(!F.found){const f=await HB.findFamily(F.name,F.code);btn.disabled=false;if(!f||f.err)return fail(f?f.err:'not_found');F.found=f;F.claim=f.people.some(x=>!x.owner)?null:'';return renderFamily()}
     else r=await HB.joinFamily(F.name,F.code,F.claim||null,F.myName,F.role,F.color);
     if(r.err)return fail(r.err);
     famState=newFam();

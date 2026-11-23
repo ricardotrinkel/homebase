@@ -327,7 +327,7 @@ begin
   return mid;
 end $$;
 
--- Procura a família pelo nome + código e mostra as pessoas (menos quem criou, que entra com email).
+-- Procura a família pelo nome + código e mostra as pessoas (quem criou aparece marcada: entra com email).
 create or replace function public.find_family(fname text, fcode text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare f families;
@@ -336,8 +336,9 @@ begin
   select * into f from families where lower(trim(name)) = lower(trim(fname)) and upper(trim(code)) = upper(trim(fcode));
   if f.id is null then return null; end if;
   return jsonb_build_object('name', f.name, 'people', coalesce((
-    select jsonb_agg(jsonb_build_object('id', id, 'name', name, 'role', role, 'color', color, 'shape', shape) order by created_at)
-    from members where family_id = f.id and id is distinct from f.owner_member), '[]'::jsonb));
+    select jsonb_agg(jsonb_build_object('id', id, 'name', name, 'role', role, 'color', color, 'shape', shape,
+                                        'owner', id is not distinct from f.owner_member) order by created_at)
+    from members where family_id = f.id), '[]'::jsonb));
 end $$;
 
 create or replace function public.join_family(fname text, fcode text, claim_id text, my_name text, my_role text, my_color text) returns text
