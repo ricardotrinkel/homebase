@@ -327,7 +327,7 @@ begin
   return mid;
 end $$;
 
--- Procura a família pelo nome + código e mostra as pessoas (quem criou aparece marcada: entra com email).
+-- Procura a família pelo nome + código e mostra todas as pessoas (quem criou também pode entrar pelo código).
 create or replace function public.find_family(fname text, fcode text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare f families;
@@ -353,7 +353,7 @@ begin
   select * into f from families where lower(trim(name)) = lower(trim(fname)) and upper(trim(code)) = upper(trim(fcode));
   if f.id is null then raise exception 'not_found'; end if;
   if claim_id is not null then
-    select id into mid from members where id = claim_id and family_id = f.id and id is distinct from f.owner_member;
+    select id into mid from members where id = claim_id and family_id = f.id;
     if mid is null then raise exception 'taken'; end if;
   else
     if length(trim(coalesce(my_name,''))) = 0 then raise exception 'no_name'; end if;
