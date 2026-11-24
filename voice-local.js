@@ -58,6 +58,15 @@
     return { t: `${pad(h)}:${pad(min)}`, used: m[0] };
   }
 
+  // "do dia três ao dia seis" -> "do dia 3 ao dia 6"
+  const NUMW = { dois: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, catorze: 14, quinze: 15,
+    dezesseis: 16, dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30, primeiro: 1 };
+  const NW = Object.keys(NUMW).join('|');
+  function numWords(f) {
+    f = f.replace(/\b(vinte|trinta) e (um|uma|dois|tres|quatro|cinco|seis|sete|oito|nove)\b/g, (_, a, b) => NUMW[a] + (NUM[b] || NUMW[b]));
+    f = f.replace(new RegExp(`(^|\\d\\s+de\\s+)?\\b(dia|ao|ate|as|a|de|do|e)\\s+(${NW})\\b`, 'g'), (all, pre, w, n) => pre && n === 'dez' ? all : `${pre || ''}${w} ${NUMW[n]}`);
+    return f.replace(/(\d+)\s*[ºo°]\b/g, '$1');
+  }
   const strip = (s, parts) => { let r = s; for (const p of parts) if (p) r = r.replace(p, ' '); return r; };
   const tidy = s => s.replace(/\s+/g, ' ').replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '').trim();
   const dropLead = (s, words) => { let r = s, prev; do { prev = r; r = r.replace(new RegExp(`^(?:${words})\\b\\s*`, 'i'), ''); } while (r !== prev); return r; };
@@ -79,14 +88,48 @@
     }
     return [c];
   }
+  // Acha as pessoas citadas. Aceita nome falado diferente do cadastrado:
+  // "Isabela" -> Isa, "Liliane" -> Lili, "Frida" -> Frieda (depois de "para", "pra", "com", "da", "e" ou vírgula).
+  function edit1(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0, j = 0, d = 0;
+    while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++d > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } }
+    return d + (a.length - i) + (b.length - j) <= 1;
+  }
+  function findPeople(f, people) {
+    const ids = [], words = [];
+    const toks = f.match(/[\p{L}\d]+|,/gu) || [];
+    const AFTER = /^(para|pra|com|da|do|de|e|,|a|o)$/;
+    for (let k = 0; k < toks.length; k++) {
+      const w = toks[k]; if (w === ',') continue;
+      let p = people.find(x => fold(x.name) === w);
+      if (!p && w.length >= 3 && k > 0 && AFTER.test(toks[k - 1])) {
+        p = people.find(x => { const n = fold(x.name).split(' ')[0]; return n.length >= 3 && (w.startsWith(n) || n.startsWith(w) || (n.length >= 4 && w.length >= 4 && edit1(n, w))); });
+      }
+      if (p) { if (!ids.includes(p.id)) ids.push(p.id); words.push(w); }
+    }
+    return { ids, words };
+  }
+  // Tira "para Isabela, Liliane e Frida" do título.
+  function dropPeople(t, words) {
+    if (!words.length) return t;
+    const alt = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    return tidy(t.replace(new RegExp(`(?:\\b(?:para|pra|com|da|do|de)\\s+)?(?:(?:a|o)\\s+)?\\b(?:${alt})\\b(?:\\s*(?:,|\\be\\b)\\s*(?:(?:a|o)\\s+)?\\b(?:${alt})\\b)*`, 'g'), ' '));
+  }
+  const SMALL = /^(de|da|do|das|dos|e|a|o)$/;
+  const capWords = s => s.split(' ').map((w, i) => i && SMALL.test(fold(w)) ? w : cap(w)).join(' ');
   function parse(text, ctx) {
     const today = ctx.today ? new Date(ctx.today + 'T00:00:00') : new Date(new Date().toDateString());
     const people = (ctx.people || []).filter(p => p.id !== 'familia');
     // Separa em pedidos: vírgula, ponto, ";" ou "e" antes de uma palavra que começa outro pedido.
     const KEY = /\b(viagem|viajar|ferias|aniversario|niver|tarefas?|supermercado|mercado|farmacia)\b/;
     const LIST = /\b(supermercado|mercado|farmacia)\b/;
-    const parts = fold(text).replace(/\s+e\s+(?=(?:tambem\s+)?(?:a |o |uma? )?(?:viagem|aniversario|niver|compromisso|tarefa|consulta|reuniao|marca|adiciona|coloca|poe|lembra|agenda)\b)/g, ';')
+    const isPeople = c => { const t = c.split(/\s+/).filter(w => !/^(e|a|o|para|pra|com)$/.test(w)); return t.length > 0 && findPeople('para ' + t.join(' , '), people).words.length === t.length; };
+    const parts0 = numWords(fold(text)).replace(/\s+e\s+(?=(?:tambem\s+)?(?:a |o |uma? )?(?:viagem|aniversario|niver|compromisso|tarefa|consulta|reuniao|marca|adiciona|coloca|poe|lembra|agenda)\b)/g, ';')
       .split(/[;,.\n]/).map(s => s.trim()).filter(Boolean);
+    // "para Isabela, Liliane e Frida": nomes soltos depois da vírgula voltam pro pedido anterior.
+    const parts = [];
+    for (const p of parts0) if (parts.length && isPeople(p)) parts[parts.length - 1] += ', ' + p; else parts.push(p);
     // Junta "banana, maçã e arroz no mercado" de volta numa frase só.
     const clauses = [];
     for (let i = 0; i < parts.length; i++) {
@@ -99,7 +142,8 @@
     }
     const actions = [], missed = [];
     const base = { date: null, until: null, start: null, end: null, repeat: 'none', owner: null, list: null, vis: null, year: null, place: null };
-    const whoIn = f => { if (/\bfamilia\b/.test(f)) return 'familia'; const p = people.find(x => new RegExp(`\\b${fold(x.name)}\\b`).test(f)); return p ? p.id : null; };
+    const whoIn = f => /\bfamilia\b/.test(f) ? ['familia'] : findPeople(f, people).ids;
+    const each = (who, fallback, act) => (who.length ? who : [fallback]).forEach(o => actions.push({ ...act, owner: o }));
     let lastList = null;
     for (const c of clauses) {
       // Listas: "leite e pão no mercado", "dipirona na farmácia"
@@ -127,9 +171,11 @@
         const d = findDates(c, today);
         let title = tidy(strip(c, d.used)).replace(/.*?\b(?:viagem|viajar|viajo|viajamos|ferias)\b\s*/, '');
         title = tidy(dropLead(title, 'para|pra|pro|a|o|de|do|da|em|no|na'));
-        title = title.replace(/\b(com a familia|da familia|familia toda)\b/g, ' ').trim();
+        title = title.replace(/\b(com a familia|da familia|familia toda|para a familia|pra familia)\b/g, ' ').trim();
+        const who = whoIn(c);
+        title = tidy(dropPeople(title, findPeople(c, people).words).replace(/\s+(?:para|pra|com|a|o|e|de|do|da)$/, ''));
         if (!d.date) { missed.push(c); continue; }
-        actions.push({ ...base, kind: 'trip', title: cap(accents(tidy(title), text) || 'Viagem'), date: d.date, until: d.until || d.date, owner: whoIn(c) || 'familia' });
+        each(who, 'familia', { ...base, kind: 'trip', title: capWords(accents(title, text)) || 'Viagem', date: d.date, until: d.until || d.date });
         continue;
       }
       if (/\b(tarefa|tarefas|to-?do)\b/.test(c)) {
@@ -146,10 +192,10 @@
         let title = tidy(strip(c, [tm.used, ...d.used]).replace(/\b(todo dia|todos os dias|diariamente|toda semana|semanal|todo mes|mensal|toda|todo|da familia|familia toda|com a familia)\b/g, ' '));
         title = tidy(dropLead(title, LEAD + '|compromisso|evento'));
         const who = whoIn(c);
-        if (who && who !== 'familia') { const p = people.find(x => x.id === who); title = tidy(title.replace(new RegExp(`\\b(?:da|do|de|pra|para|com)?\\s*${fold(p.name)}\\b`), ' ')); }
+        title = dropPeople(title, findPeople(c, people).words);
         title = title.replace(/\s+(?:as|a|no|na|de|do|da|em|para|pra)$/, '').trim();
         if (!d.date || !title) { missed.push(c); continue; }
-        actions.push({ ...base, kind: 'event', title: cap(accents(title, text)), date: d.date, start: tm.t || '09:00', repeat, owner: who });
+        each(who, null, { ...base, kind: 'event', title: cap(accents(title, text)), date: d.date, start: tm.t || '09:00', repeat });
         continue;
       }
       missed.push(c);

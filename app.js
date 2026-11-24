@@ -845,7 +845,7 @@ function openVoice(){
       stop();err.textContent='';
       const r=localVoice(text,{today:key(today()),people:PEOPLE.map(x=>({id:x.id,name:x.name}))});
       go.disabled=false;go.textContent=t('Entender');
-      const acts=(r.actions||[]).map(cleanVoice).filter(Boolean);
+      const acts=(r.actions||[]).map(cleanVoice).filter(Boolean).filter((a,i,all)=>!a.ev||all.findIndex(b=>b.ev&&JSON.stringify(b.ev)===JSON.stringify(a.ev))===i);
       out.innerHTML=`<p class="vreply">${esc(r.reply||'')}</p>${acts.length?`<div class="list">${acts.map(a=>`<div class="litem" style="--c:${a.color}"><i class="bar"></i><span><b>${esc(a.label)}</b><small>${esc(a.sub)}</small></span></div>`).join('')}</div>`:''}`;
       if(acts.length){found=acts;go.textContent=t('Adicionar')}
     };

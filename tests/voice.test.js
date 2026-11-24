@@ -52,3 +52,10 @@ test('sem data não inventa', () => {
   assert.equal(r.actions.length, 0);
   assert.match(r.reply, /Não entendi/);
 });
+test('viagem do dia X ao dia Y para várias pessoas (nomes falados diferente)', () => {
+  const c = { today: '2026-11-24', people: [{ id: 'isa', name: 'isa' }, { id: 'lili', name: 'Lili' }, { id: 'frieda', name: 'Frieda' }] };
+  const a = globalThis.localVoice('adicione uma viagem do dia 3 ao dia 6 de dezembro a São Paulo para Isabela, Liliane e Frida', c).actions;
+  assert.deepEqual(a.map(x => [x.kind, x.title, x.date, x.until, x.owner]), ['isa', 'lili', 'frieda'].map(o => ['trip', 'São Paulo', '2026-12-03', '2026-12-06', o]));
+  const [b] = globalThis.localVoice('viagem do dia três ao dia seis de dezembro para o Rio de Janeiro', c).actions;
+  assert.deepEqual([b.title, b.date, b.until], ['Rio de Janeiro', '2026-12-03', '2026-12-06']);
+});
