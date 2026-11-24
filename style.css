@@ -362,3 +362,5 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .micbig.on{background:#EA5E86;animation:micpulse 1.2s ease-in-out infinite}
 @keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(234,94,134,.55)}50%{box-shadow:0 0 0 16px rgba(234,94,134,0)}}
 .vreply{margin:0;font-weight:600}
+
+@media (max-width:480px){.choose b{font-size:21px}.choose button{min-height:130px;padding:18px 14px}}
