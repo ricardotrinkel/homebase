@@ -342,15 +342,6 @@ window.HB = (() => {
     isOwner: () => !!(family && family.owner_member === db.session),
     enablePush, disablePush, refreshPush, pushState,
     email: () => (user && user.email) || '',
-    // Assistente por voz: manda o texto para o servidor, que devolve o que adicionar.
-    assistant: async body => {
-      try {
-        const { data } = await sb.auth.getSession();
-        const r = await fetch('/api/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session ? data.session.access_token : ''}` }, body: JSON.stringify(body) });
-        const j = await r.json().catch(() => ({}));
-        return r.ok ? j : { error: j.error || 'net' };
-      } catch (e) { return { error: 'net' }; }
-    },
     isAnon: () => !(user && user.email),
     offline: () => isOffline,
     recovery: () => isRecovery,

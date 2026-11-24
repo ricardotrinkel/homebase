@@ -841,11 +841,9 @@ function openVoice(){
     go.onclick=async()=>{
       if(found){applyVoice(found);return}
       const text=txt.value.trim();if(!text)return err.textContent=t('Fale ou escreva o que quer adicionar.');
-      stop();go.disabled=true;go.textContent=t('Pensando…');err.textContent='';
-      const T=today(),r=await HB.assistant({text,today:key(T),weekday:T.toLocaleDateString('pt-BR',{weekday:'long'}),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,me:p.id,admin:!!p.admin,
-        people:[...PEOPLE.map(x=>({id:x.id,name:x.name,role:x.role})),{id:'familia',name:'Família toda',role:'Todos'}]});
+      stop();err.textContent='';
+      const r=localVoice(text,{today:key(today()),people:PEOPLE.map(x=>({id:x.id,name:x.name}))});
       go.disabled=false;go.textContent=t('Entender');
-      if(r.error){err.textContent=t({no_key:'O assistente ainda não foi ligado (falta a chave na Vercel).',bad_key:'A chave do assistente na Vercel não funcionou.',login:'Entre de novo no app e tente outra vez.',busy:'O assistente está ocupado. Tente daqui a pouco.'}[r.error]||'Não deu para falar com o assistente. Verifique a internet e tente de novo.');return}
       const acts=(r.actions||[]).map(cleanVoice).filter(Boolean);
       out.innerHTML=`<p class="vreply">${esc(r.reply||'')}</p>${acts.length?`<div class="list">${acts.map(a=>`<div class="litem" style="--c:${a.color}"><i class="bar"></i><span><b>${esc(a.label)}</b><small>${esc(a.sub)}</small></span></div>`).join('')}</div>`:''}`;
       if(acts.length){found=acts;go.textContent=t('Adicionar')}

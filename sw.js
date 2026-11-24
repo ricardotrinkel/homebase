@@ -1,6 +1,6 @@
 /* Homebase service worker: funciona offline (mostra a última versão) e recebe notificações. */
-const CACHE = 'homebase-v13';
-const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/backend.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/badge-96.png'];
+const CACHE = 'homebase-v14';
+const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/voice-local.js', '/backend.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/badge-96.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
