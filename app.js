@@ -85,7 +85,7 @@ Object.assign(EN,{
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
  'Sair desta conta':'Sign out of this account',
- 'Viagem':'Trip','Falar com o assistente':'Talk to the assistant','Assistente':'Assistant','Falar':'Speak','Toque no microfone e fale. Ex.: “viagem para a praia de 20 a 27 de dezembro”, “põe leite na lista do mercado”.':'Tap the mic and speak. E.g. “beach trip Dec 20 to 27”, “add milk to the grocery list”.',
+ 'Viagem':'Trip','Diga o que quer marcar e o app preenche.':'Say what to add and the app fills it in.','Falar com o assistente':'Talk to the assistant','Assistente':'Assistant','Falar':'Speak','Toque no microfone e fale. Ex.: “viagem para a praia de 20 a 27 de dezembro”, “põe leite na lista do mercado”.':'Tap the mic and speak. E.g. “beach trip Dec 20 to 27”, “add milk to the grocery list”.',
  'Toque no microfone do teclado para ditar, ou escreva. Ex.: “aniversário da vó dia 3 de março”.':'Tap the keyboard mic to dictate, or type. E.g. “grandma’s birthday March 3”.','O que você quer adicionar?':'What do you want to add?','Entender':'Understand','Pensando…':'Thinking…',
  'Libere o microfone para o Homebase nos ajustes do aparelho.':'Allow the microphone for Homebase in your device settings.','Não deu para ouvir. Tente de novo ou escreva.':'Couldn’t hear you. Try again or type.','Fale ou escreva o que quer adicionar.':'Say or type what you want to add.',
  'O assistente ainda não foi ligado (falta a chave na Vercel).':'The assistant isn’t on yet (missing key on Vercel).','A chave do assistente na Vercel não funcionou.':'The assistant key on Vercel didn’t work.','Entre de novo no app e tente outra vez.':'Sign in again and retry.','O assistente está ocupado. Tente daqui a pouco.':'The assistant is busy. Try again soon.',
@@ -595,6 +595,7 @@ const sheetHead=(eyebrow,title)=>`<div class="shead"><div class="grow"><div clas
 function openNewChooser(){
   openSheet(`${sheetHead(t('Adicionar'),t('O que vamos marcar?'))}
    <div class="choose">
+     <button data-act="voice" style="--c:#F7E289">${I.mic}<b>${t('Falar')}</b><span>${t('Diga o que quer marcar e o app preenche.')}</span></button>
      <button data-act="newEvent" style="--c:${C.family}">${I.cal}<b>${t('Compromisso')}</b><span>${t('Com horário, repetição e lembrete.')}</span></button>
      <button data-act="newTrip" style="--c:${C.trip}">${I.plane}<b>${t('Viagem')}</b><span>${t('Vários dias seguidos, da ida até a volta.')}</span></button>
      <button data-act="newBday" style="--c:${C.bdayFam}">${I.cake}<b>${t('Aniversário')}</b><span>${t('Escolha quem pode ver.')}</span></button>
@@ -967,7 +968,7 @@ document.addEventListener('click',e=>{
     case'newTrip':openEventForm(null,{trip:true});break;
     case'newBday':openBdayForm();break;
     case'bell':openBell();break;
-    case'voice':openVoice();break;
+    case'voice':closeSheet();openVoice();break;
     case'settings':openSettings();break;
     case'logout':closeSheet();HB.signOut().then(route);break;
   }
