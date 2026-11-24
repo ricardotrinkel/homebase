@@ -72,11 +72,10 @@ ${people}`;
 
   const client = new Anthropic();
   try {
-    const msg = await client.beta.messages.create({
-      model: 'claude-opus-5-5',
+    // Claude Haiku 5.5: o modelo mais barato (frações de centavo por pedido) e rápido.
+    const msg = await client.messages.create({
+      model: 'claude-haiku-5-5',
       max_tokens: 4000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
       system,
       messages: [{ role: 'user', content: `${context}\n\nPedido: ${text}` }],
