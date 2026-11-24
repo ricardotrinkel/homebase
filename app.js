@@ -85,7 +85,11 @@ Object.assign(EN,{
  'Digite o nome da família.':'Type the family name.','Digite seu nome.':'Type your name.',
  'Essa pessoa acabou de ser escolhida por outro login.':'Someone else just picked that person.',
  'Sair desta conta':'Sign out of this account',
- 'Viagem':'Trip','Quem criou a família entra com email':'Whoever created the family signs in with email','entra com email':'signs in with email','Como entrar':'How to sign in','Criei a família':'I created the family','Essa pessoa entra com email. Toque em “Criei a família” lá em cima.':'This person signs in with email. Tap “I created the family” at the top.','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
+ 'Viagem':'Trip','Falar com o assistente':'Talk to the assistant','Assistente':'Assistant','Falar':'Speak','Toque no microfone e fale. Ex.: “viagem para a praia de 20 a 27 de dezembro”, “põe leite na lista do mercado”.':'Tap the mic and speak. E.g. “beach trip Dec 20 to 27”, “add milk to the grocery list”.',
+ 'Toque no microfone do teclado para ditar, ou escreva. Ex.: “aniversário da vó dia 3 de março”.':'Tap the keyboard mic to dictate, or type. E.g. “grandma’s birthday March 3”.','O que você quer adicionar?':'What do you want to add?','Entender':'Understand','Pensando…':'Thinking…',
+ 'Libere o microfone para o Homebase nos ajustes do aparelho.':'Allow the microphone for Homebase in your device settings.','Não deu para ouvir. Tente de novo ou escreva.':'Couldn’t hear you. Try again or type.','Fale ou escreva o que quer adicionar.':'Say or type what you want to add.',
+ 'O assistente ainda não foi ligado (falta a chave na Vercel).':'The assistant isn’t on yet (missing key on Vercel).','A chave do assistente na Vercel não funcionou.':'The assistant key on Vercel didn’t work.','Entre de novo no app e tente outra vez.':'Sign in again and retry.','O assistente está ocupado. Tente daqui a pouco.':'The assistant is busy. Try again soon.',
+ 'Não deu para falar com o assistente. Verifique a internet e tente de novo.':'Couldn’t reach the assistant. Check your connection and try again.','1 coisa adicionada':'1 thing added','{n} coisas adicionadas':'{n} things added','Quem criou a família entra com email':'Whoever created the family signs in with email','entra com email':'signs in with email','Como entrar':'How to sign in','Criei a família':'I created the family','Essa pessoa entra com email. Toque em “Criei a família” lá em cima.':'This person signs in with email. Tap “I created the family” at the top.','Vários dias seguidos, da ida até a volta.':'Several days in a row, from departure to return.','Viagem da família':'Family trip','Viagem de {n}':'{n}’s trip',
  'Ida':'Leave','Volta':'Return','Nova viagem':'New trip','Editar viagem':'Edit trip','Ex.: Praia, casa da vó':'E.g. beach, grandma’s house','Dê um nome à viagem.':'Give the trip a name.',
  'Preencha a ida e a volta.':'Fill in the leave and return dates.','A volta precisa ser depois da ida.':'The return must be after leaving.','Viagem salva':'Trip saved',
  'Quem criou a família':'Whoever created the family','Entrar com email':'Sign in with email','Vai criar uma família? Digite seu email e crie uma senha.':'Creating a family? Type your email and create a password.',
@@ -198,6 +202,7 @@ function nextBdays(n=6){const T=today();return db.birthdays.filter(canSeeBday).m
 const I={
  prev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
  next:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+ mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
  x:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -416,6 +421,7 @@ function renderApp(){
     <nav class="tabs" role="tablist">${tab('dia','Dia')}${tab('semana','Semana')}${tab('ano','Ano')}${tab('listas','Listas')}</nav>
     <div class="grow"></div>
     <button class="btn newbtn" data-act="new">${sz(I.plus,18)}${t('Adicionar')}</button>
+    <button class="iconbtn" data-act="voice" aria-label="${t('Falar com o assistente')}">${I.mic}</button>
     <button class="iconbtn" data-act="bell" aria-label="${t('Lembretes')}">${I.bell}${upcoming&&db.prefs.notif?'<span class="badge"></span>':''}</button>
     <button class="me" data-act="settings" aria-label="${t('Conta e preferências')}">${avatar(p,34)}<span class="lbl">${p.name}<small>${p.admin?t('Admin · vê todos'):t('Meu horário')}</small></span></button>
   </header>
@@ -805,6 +811,78 @@ function pushCardHTML(){
     unsupported:'Este navegador não recebe notificações. Instale o app na tela inicial ou use outro navegador.'}[s];
   return `<div class="pushcard"><b>${t('Notificações neste aparelho')}</b><p class="note">${msg?t(msg):t('Os avisos chegam como notificação, mesmo com o app fechado.')}</p>${s==='off'?`<button class="btn primary" data-act="pushOn">${t('Ativar notificações')}</button>`:''}</div>`;
 }
+/* ================= Assistente por voz ================= */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let voiceRec=null;
+function openVoice(){
+  const p=me();
+  openSheet(`${sheetHead(t('Assistente'),t('O que vamos marcar?'))}
+   <div class="voice">
+    ${SR?`<button type="button" class="micbig" id="vMic" aria-label="${t('Falar')}">${I.mic}</button><p class="note" id="vHint" style="text-align:center;margin:0">${t('Toque no microfone e fale. Ex.: “viagem para a praia de 20 a 27 de dezembro”, “põe leite na lista do mercado”.')}</p>`
+       :`<p class="note" style="margin:0">${t('Toque no microfone do teclado para ditar, ou escreva. Ex.: “aniversário da vó dia 3 de março”.')}</p>`}
+    <textarea class="input" id="vText" rows="3" placeholder="${t('O que você quer adicionar?')}"></textarea>
+    <div class="err" id="vErr" role="alert"></div>
+    <div id="vOut"></div>
+    <div class="actions" id="vActs"><button type="button" class="btn ghost" data-close>${t('Cancelar')}</button><button type="button" class="btn primary" id="vGo">${t('Entender')}</button></div>
+   </div>`,sh=>{
+    const txt=sh.querySelector('#vText'),err=sh.querySelector('#vErr'),out=sh.querySelector('#vOut'),go=sh.querySelector('#vGo'),mic=sh.querySelector('#vMic');
+    let found=null;
+    const stop=()=>{try{voiceRec&&voiceRec.stop()}catch(e){}voiceRec=null;mic&&mic.classList.remove('on')};
+    if(mic)mic.onclick=()=>{
+      if(voiceRec)return stop();
+      const r=new SR();r.lang=LANG==='en'?'en-US':'pt-BR';r.interimResults=true;r.continuous=false;
+      const base=txt.value?txt.value.trim()+' ':'';
+      r.onresult=e=>{let s='';for(let i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;txt.value=base+s};
+      r.onerror=e=>{err.textContent=e.error==='not-allowed'?t('Libere o microfone para o Homebase nos ajustes do aparelho.'):t('Não deu para ouvir. Tente de novo ou escreva.')};
+      r.onend=()=>{stop();if(txt.value.trim()&&!found)go.click()};
+      voiceRec=r;mic.classList.add('on');err.textContent='';found=null;out.innerHTML='';
+      try{r.start()}catch(e){stop()}
+    };
+    go.onclick=async()=>{
+      if(found){applyVoice(found);return}
+      const text=txt.value.trim();if(!text)return err.textContent=t('Fale ou escreva o que quer adicionar.');
+      stop();go.disabled=true;go.textContent=t('Pensando…');err.textContent='';
+      const T=today(),r=await HB.assistant({text,today:key(T),weekday:T.toLocaleDateString('pt-BR',{weekday:'long'}),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,me:p.id,admin:!!p.admin,
+        people:[...PEOPLE.map(x=>({id:x.id,name:x.name,role:x.role})),{id:'familia',name:'Família toda',role:'Todos'}]});
+      go.disabled=false;go.textContent=t('Entender');
+      if(r.error){err.textContent=t({no_key:'O assistente ainda não foi ligado (falta a chave na Vercel).',bad_key:'A chave do assistente na Vercel não funcionou.',login:'Entre de novo no app e tente outra vez.',busy:'O assistente está ocupado. Tente daqui a pouco.'}[r.error]||'Não deu para falar com o assistente. Verifique a internet e tente de novo.');return}
+      const acts=(r.actions||[]).map(cleanVoice).filter(Boolean);
+      out.innerHTML=`<p class="vreply">${esc(r.reply||'')}</p>${acts.length?`<div class="list">${acts.map(a=>`<div class="litem" style="--c:${a.color}"><i class="bar"></i><span><b>${esc(a.label)}</b><small>${esc(a.sub)}</small></span></div>`).join('')}</div>`:''}`;
+      if(acts.length){found=acts;go.textContent=t('Adicionar')}
+    };
+    txt.oninput=()=>{if(found){found=null;out.innerHTML='';go.textContent=t('Entender')}};
+  });
+}
+// Confere o que o assistente devolveu e prepara para salvar (nada é salvo sem a pessoa tocar em "Adicionar").
+function cleanVoice(a){
+  const p=me(),D=/^\d{4}-\d{2}-\d{2}$/,H=/^\d{2}:\d{2}$/,title=String(a.title||'').trim().slice(0,120);if(!title)return null;
+  const ownerOk=o=>p.admin&&(o==='familia'||PEOPLE.some(x=>x.id===o))?o:p.id;
+  const fd=d=>parse(d).toLocaleDateString(L().loc,{day:'numeric',month:'short'});
+  if(a.kind==='event'){if(!D.test(a.date||''))return null;const start=H.test(a.start||'')?a.start:'09:00';let end=H.test(a.end||'')?a.end:'';if(!end||toMin(end)<=toMin(start)){const m=Math.min(toMin(start)+60,23*60+59);end=`${pad(Math.floor(m/60))}:${pad(m%60)}`}
+    const repeat=REPEAT_K.includes(a.repeat)?a.repeat:'none',owner=ownerOk(a.owner);
+    return{kind:'event',color:colorOf(owner),label:title,sub:`${fd(a.date)} · ${start}–${end}${repeat!=='none'?' · '+rep(repeat):''} · ${pname(person(owner))}`,
+      ev:{owner,title,date:a.date,until:repeat!=='none'&&D.test(a.until||'')?a.until:null,start,end,repeat,reminder:30,place:String(a.place||'').slice(0,120),notes:'',private:false,trip:false}}}
+  if(a.kind==='trip'){if(!D.test(a.date||''))return null;const until=D.test(a.until||'')&&a.until>=a.date?a.until:a.date,owner=ownerOk(a.owner||'familia');
+    return{kind:'trip',color:C.trip,label:`${t('Viagem')}: ${title}`,sub:`${fd(a.date)} – ${fd(until)} · ${pname(person(owner))}`,
+      ev:{owner,title,date:a.date,until,start:'08:00',end:'20:00',repeat:'none',reminder:1440,place:String(a.place||'').slice(0,120),notes:'',private:false,trip:true}}}
+  if(a.kind==='birthday'){if(!D.test(a.date||''))return null;const md=a.date.slice(5),vis=a.vis==='eu'?'eu':'familia';
+    return{kind:'birthday',color:vis==='familia'?C.bdayFam:C.bdayInd,label:t('Aniversário de {n}',{n:title}),sub:`${dm(+md.slice(3),+md.slice(0,2)-1)} · ${vis==='familia'?t('Família toda'):t('Individual')}`,
+      b:{name:title,md,year:Number.isInteger(a.year)&&a.year>1900?a.year:null,vis,with:[]}}}
+  if(a.kind==='shopping'){const list=a.list==='farmacia'?'farmacia':'mercado';return{kind:'shopping',list,color:list==='mercado'?'#F9A2C5':'#A3C1E2',label:title,sub:list==='mercado'?t('Supermercado'):t('Farmácia'),text:title}}
+  if(a.kind==='todo')return{kind:'todo',color:p.color,label:title,sub:t('Minhas tarefas'),text:title};
+  return null;
+}
+function applyVoice(acts){
+  const p=me();let n=0;
+  for(const a of acts){
+    if(a.ev){db.events.push({id:uid(),by:p.id,...a.ev});n++}
+    else if(a.b){db.birthdays.push({id:uid(),by:p.id,...a.b});n++}
+    else if(a.kind==='shopping'){db.lists[a.list].push({id:uid(),text:a.text,by:p.id,done:false});n++}
+    else if(a.kind==='todo'){(db.todos[p.id]=db.todos[p.id]||[]).push({id:uid(),text:a.text,by:p.id,done:false});n++}
+  }
+  const first=acts.find(a=>a.ev);if(first)st.cursor=parse(first.ev.date);
+  save();closeSheet();renderApp();toast(n===1?t('1 coisa adicionada'):t('{n} coisas adicionadas',{n}),p.color,acts.map(a=>a.label).join(', ').slice(0,80));
+}
 function openBell(){
   const r=reminderList().slice(0,8);
   openSheet(`${sheetHead(t('Lembretes'),t('Próximos avisos'))}
@@ -891,6 +969,7 @@ document.addEventListener('click',e=>{
     case'newTrip':openEventForm(null,{trip:true});break;
     case'newBday':openBdayForm();break;
     case'bell':openBell();break;
+    case'voice':openVoice();break;
     case'settings':openSettings();break;
     case'logout':closeSheet();HB.signOut().then(route);break;
   }

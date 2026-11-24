@@ -31,6 +31,7 @@ As regras ficam no banco (não só no app), então valem em qualquer aparelho, e
 | `VAPID_PRIVATE_KEY` | Chave privada das notificações. Nunca compartilhe. |
 | `VAPID_SUBJECT` | Opcional: `mailto:` com um email de contato. Sem ele, usa o endereço do app. |
 | `CRON_SECRET` | Senha que só o agendador do Supabase conhece |
+| `ANTHROPIC_API_KEY` | Opcional: liga o assistente por voz (botão do microfone). Chave da Claude API (console.anthropic.com). Nunca compartilhe. |
 
 Para gerar novas chaves de notificação: `npx web-push generate-vapid-keys`.
 
